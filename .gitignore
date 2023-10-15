@@ -1,0 +1,3 @@
+# Ignore the log and roster files.
+logs/
+.DS_Store
