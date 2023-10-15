@@ -110,7 +110,8 @@ bug fixes you contribute.
 
 ## License
 
-This script is released under the MIT License.
+This work is Copyright (c) 2023, [Kayvan A. Sylvan][linkedin] and is released under the MIT License.
 
 [landmark]: https://www.landmarkworldwide.com/
 [zoom]: http://zoom.us
+[linkedin]: https://www.linkedin.com/in/kayvansylvan/
