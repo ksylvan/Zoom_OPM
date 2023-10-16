@@ -38,7 +38,6 @@ property topZoomWindow : "Zoom"
 property meetingWindow : "Zoom Meeting"
 property participantsOpen : "Show Manage Participants"
 property participantsClose : "Close Manage Participants"
-property inMeeting : false
 
 -- These two files are created in the logs/ subdirectory of the directory where the script is run.
 -- The pattern of filenames: logs/20231014-log.txt and logs/20231014-roster.txt
