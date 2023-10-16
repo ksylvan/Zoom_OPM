@@ -71,9 +71,6 @@ on setUpFiles()
 	set _prefix to my todayYMD()
 	set logFile to POSIX file (_logDir & "logs/" & _prefix & "-" & logFile)
 	set meetingRoster to POSIX file (_logDir & "logs/" & _prefix & "-" & meetingRoster)
-	tell application "Finder"
-		do shell script "echo 'Your log message here'"
-	end tell
 end setUpFiles
 
 on stringStartsWith(theSubstring, theString)
@@ -277,36 +274,6 @@ on generateRoster()
 		end tell
 	end tell
 end generateRoster
-
-on logUIHierarchy(uiElement, prefix)
-	tell application "System Events"
-		logMessage(prefix & " " & my UIElementToString(uiElement), logFile)
-		if (exists UI elements of uiElement) then
-			repeat _e in UI elements of uiElement
-				logUIHierarchy(_e, "-" & prefix)
-			end repeat
-		end if
-	end tell
-end logUIHierarchy
-
-on UIElementToString(uiElement)
-	tell application "System Events"
-		set resultString to ""
-		set propertiesList to {"name", "title", "description", "value", "help", "class"}
-		repeat with propName in propertiesList
-			try
-				set propValue to run script "vale of "& propName & " of " & "uiElement"
-				set resultString to resultString & propName & ": " & propValue & ", "
-			on error errMsg
-				-- do nothing on error, so non-existing properties are ignored
-			end try
-		end repeat
-		if resultString is not "" then
-			set resultString to text 1 thru -3 of resultString -- remove the trailing comma and space
-		end if
-		return resultString
-	end tell
-end UIElementToString
 
 -- Main logic
 on main()
