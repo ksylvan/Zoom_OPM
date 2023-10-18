@@ -36,6 +36,7 @@ property appName : "zoom.us"
 property appVersion : missing value
 property topZoomWindow : "Zoom"
 property meetingWindow : "Zoom Meeting"
+property sharingWindow: "zoom share statusbar window"
 property participantsOpen : "Show Manage Participants"
 property participantsClose : "Close Manage Participants"
 
@@ -170,7 +171,8 @@ on checkZoomMeetingRunning()
 	repeat
 		-- Make sure we are in a Zoom meeting
 		tell application "System Events" to tell process appName
-			if not (exists window meetingWindow) then
+			set _inZoom to ((exists window meetingWindow) or (exists window sharingWindow))
+			if not (_inZoom) then
 				display dialog "The " & scriptName & " application needs a Zoom Meeting." & linefeed & "Please join the Zoom Meeting and press OK."
 			else
 				exit repeat
