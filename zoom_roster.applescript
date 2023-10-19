@@ -21,22 +21,13 @@
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *)
 
-(**
- * This code creates two files in the directory that the script in run, log.txt and roster.txt.
- * It checks if the Zoom app is running, if we are in a Zoom meeting, and if needed,
- * activates the Participants pane.
- * 
- * It then writes the names of the participants to the roster.txt file.
- *)
-
 -- Global properties
-
 property scriptName : "Zoom Roster"
 property appName : "zoom.us"
 property appVersion : missing value
 property topZoomWindow : "Zoom"
 property meetingWindow : "Zoom Meeting"
-property sharingWindow: "zoom share statusbar window"
+property sharingWindow : "zoom share statusbar window"
 property participantsOpen : "Show Manage Participants"
 property participantsClose : "Close Manage Participants"
 
@@ -56,37 +47,22 @@ on todayYMD()
 end todayYMD
 
 on setUpFiles()
- (*
-  * This code sets up two files, logFile and meetingRoster, in the "logs/" subdirectory
-  * of the containing directory of the script. It sets up the files as global POSIX file handles.
-  * The files are named with a prefix of the current date in YYYMMDD format for easy indexing.
-  *)
+	(*
+	setUpFiles handler:
+	Creates a folder called "logs" in the same directory as the program if it does not already exist.
+	It then creates two files, logFile and meetingRoster, in the logs folder, with a prefix of the current date.
+	*)
 	tell application "Finder"
 		set _logDir to container of (path to me)
 		if not (exists folder "logs" of _logDir) then
-        	make new folder at _logDir with properties {name:"logs"}
-    	end if
+			make new folder at _logDir with properties {name:"logs"}
+		end if
 	end tell
 	set _logDir to POSIX path of (_logDir as text)
 	set _prefix to my todayYMD()
 	set logFile to POSIX file (_logDir & "logs/" & _prefix & "-" & logFile)
 	set meetingRoster to POSIX file (_logDir & "logs/" & _prefix & "-" & meetingRoster)
 end setUpFiles
-
-on stringStartsWith(theSubstring, theString)
-	(*
-	-- Usage:
-	set theString to "Hello, world!"
-	set theSubstring to "Hello"
-	set doesStartWith to stringStartsWith(theSubstring, theString)
-	log doesStartWith -- logs "true"
-	*)
-	set tid to AppleScript's text item delimiters -- save the current delimiters
-	set AppleScript's text item delimiters to theSubstring -- set the delimiter to the substring
-	set textItems to text items of theString -- split the string by the substring
-	set AppleScript's text item delimiters to tid -- restore the original delimiters
-	return (count of textItems) > 1 and (item 1 of textItems is "")
-end stringStartsWith
 
 on formatDateTime(theDateTime)
 	set [_day, _month, _year, _hours, _minutes, _seconds] to [day, month, year, hours, minutes, seconds] of theDateTime
@@ -158,7 +134,7 @@ on standaloneParticipantWindow()
 	tell application "System Events" to tell process appName
 		set _wins to windows -- The list of windows of the Zoom application
 		repeat with w in _wins
-			if my stringStartsWith("Participants", name of w) then
+			if name of w starts with "Participants" then
 				set _return to w -- We found the free floating "Participants (NNN)" window
 			end if
 		end repeat
@@ -219,18 +195,16 @@ on generateRoster()
 			set myParticipants to (UI elements)
 			set _intro to "=== " & (my formatDateTime(current date)) & " ==="
 			my writeToRoster(_intro, meetingRoster)
-
-			set [_waiting, _joined] to [0,0] -- This is the number in Waiting Room and the numner Joined
-
+			set [_waiting, _joined] to [0, 0] -- This is the number in Waiting Room and the numner Joined
 			set _num to ((length of myParticipants) - 1)
 			set _inWaitingList to false
 			set _inJoinedList to false
 			repeat with i from 1 to _num
 				set _pName to (get value of static text of UI element of row i) as string
-				if my stringStartsWith("Waiting Room ", _pName) then
+				if _pName starts with "Waiting Room " then
 					set _inWaitingList to true
 				end if
-				if my stringStartsWith("Joined ", _pName) then
+				if _pName starts with "Joined " then
 					set _inWaitingList to false
 					set _inJoinedList to true
 				end if
@@ -238,7 +212,6 @@ on generateRoster()
 					set _inJoinedList to true
 					set _joined to 1
 				end if
-
 				set _numPrefix to ""
 				if _inWaitingList and (_waiting > 0) then
 					set _numPrefix to " " & (_waiting as string) & ". "
@@ -246,7 +219,6 @@ on generateRoster()
 				if (not _inWaitingList) and (_joined > 0) then
 					set _numPrefix to " " & (_joined as string) & ". "
 				end if
-
 				set _pName to _numPrefix & (_pName as string)
 				my writeToRoster(_pName, meetingRoster)
 				if _inWaitingList then
@@ -255,7 +227,6 @@ on generateRoster()
 					set _joined to _joined + 1
 				end if
 			end repeat
-
 			if _joined > 1 then
 				set _joined to _joined - 1
 			end if
@@ -271,7 +242,6 @@ on generateRoster()
 			end if
 			set _summary to "=== " & (_sum as string) & " participant" & plural & " " & (my formatDateTime(current date)) & " ==="
 			my writeToRoster(_summary, meetingRoster)
-
 		end tell
 	end tell
 end generateRoster
