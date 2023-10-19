@@ -38,6 +38,7 @@ property logFile : "log.txt"
 property meetingRoster : "roster.txt"
 
 on todayYMD()
+	-- Return the current date in the format YYYYMMDD.
 	set [_day, _month, _year] to [day, month, year] of (current date)
 	set _month to _month * 1 --> 3
 	set _month to text -1 thru -2 of ("0" & _month) --> "03"
@@ -65,6 +66,11 @@ on setUpFiles()
 end setUpFiles
 
 on formatDateTime(theDateTime)
+	(*
+	This code takes a date and time as input and formats it into a string in the form of MM/DD/YYYY HH:MM:SS.
+	It does this by extracting the day, month, year, hours, minutes, and seconds from the input and
+	adding a leading zero if necessary.
+	*)
 	set [_day, _month, _year, _hours, _minutes, _seconds] to [day, month, year, hours, minutes, seconds] of theDateTime
 	set _month to _month * 1 --> 3
 	set _month to text -1 thru -2 of ("0" & _month) --> "03"
@@ -192,11 +198,11 @@ on generateRoster()
 			set _participantWin to window meetingWindow
 		end if
 		tell outline 1 of scroll area 1 of _participantWin
-			set myParticipants to (UI elements)
+			set myParticipants to (rows)
 			set _intro to "=== " & (my formatDateTime(current date)) & " ==="
 			my writeToRoster(_intro, meetingRoster)
 			set [_waiting, _joined] to [0, 0] -- This is the number in Waiting Room and the numner Joined
-			set _num to ((length of myParticipants) - 1)
+			set _num to (count myParticipants)
 			set _inWaitingList to false
 			set _inJoinedList to false
 			repeat with i from 1 to _num
