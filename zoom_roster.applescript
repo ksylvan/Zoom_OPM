@@ -176,11 +176,9 @@ on appLogMessage(message)
 end appLogMessage
 
 on writeToRoster(message, filePath)
-	(*
-    -- Usage:
-    set logFilePath to (path to desktop as string) & "rostter.txt" -- Path to the roster file
-    my writeTeRoster("John Smith", logFilePath)
-    *)
+	-- Usage:
+	-- set logFilePath to (path to desktop as string) & "rostter.txt" -- Path to the roster file
+	-- my writeTeRoster("John Smith", logFilePath)
 	try
 		-- Open the log file for writing, creating it if it doesn't exist
 		set _log to open for access file filePath with write permission
