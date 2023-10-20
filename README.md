@@ -54,6 +54,8 @@ Zoom version 5.16.2 (23409).
   current Zoom meeting.
 - Utilizes AppleScript's GUI Scripting capabilities to interact with the Zoom
   application's user interface.
+- When the roster is generated, the application also admiits each person in
+  the waiting room to the meeting (and logs the action in `YYYYMMDD-log.txt`)
 
 ### Usage
 
@@ -91,11 +93,6 @@ some of the key handlers:
 The script assumes that the Zoom app is installed. If the Zoom app is not
 running, the script will start the Zoom app and create a dialog box prompting
 the user to start a meeting.
-
-Every once in a while, "System Events" will fail to communicate with the Zoom Meeting window and
-the script will abort. When this happens, you will see a dialog box with a message like the following: "Error:
-Can’t get every text item of missing value. (-1728)" with a "Quit" button. Clicking on "Quit" and
-re-running the script again will work.
 
 ### Future Enhancements
 
