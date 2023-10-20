@@ -28,8 +28,7 @@ property appVersion : missing value
 property topZoomWindow : "Zoom"
 property meetingWindow : "Zoom Meeting"
 property sharingWindow : "zoom share statusbar window"
-property participantsOpen : "Show Manage Participants"
-property participantsClose : "Close Manage Participants"
+property participantWindow : missing value
 
 -- These two files are created in the logs/ subdirectory of the directory where the script is run.
 -- The pattern of filenames: logs/20231014-log.txt and logs/20231014-roster.txt
@@ -48,11 +47,9 @@ on todayYMD()
 end todayYMD
 
 on setUpFiles()
-	(*
-	setUpFiles handler:
-	Creates a folder called "logs" in the same directory as the program if it does not already exist.
-	It then creates two files, logFile and meetingRoster, in the logs folder, with a prefix of the current date.
-	*)
+	-- setUpFiles handler:
+	-- Creates a folder called "logs" in the same directory as the program if it does not already exist.
+	-- It then creates two files, logFile and meetingRoster, in the logs folder, with a prefix of the current date.
 	tell application "Finder"
 		set _logDir to container of (path to me)
 		if not (exists folder "logs" of _logDir) then
@@ -83,11 +80,9 @@ on formatDateTime(theDateTime)
 end formatDateTime
 
 on logMessage(message, filePath)
-	(*
-    -- Usage:
-    set logFilePath to (path to desktop as string) & "logfile.txt" -- Path to the log file
-    my logMessage("This is a log message.", logFilePath)
-    *)
+	-- Usage:
+	-- set logFilePath to (path to desktop as string) & "logfile.txt" -- Path to the log file
+	-- my logMessage("This is a log message.", logFilePath)
 	try
 		-- Open the log file for writing, creating it if it doesn't exist
 		set _log to open for access file filePath with write permission
@@ -116,37 +111,50 @@ on checkZoomRunning()
 	set appVersion to version of application appName
 end checkZoomRunning
 
-on startParticipantWindow()
-	-- We deliberately close and start the participant panel.
-	tell application appName to activate
+on clickZoomManageParticipants()
+	(*
+	This code is used to click the "Manage Participants" menu item of the status menu bar.
+	A delay of 1 second is added after the click.
+	*)
 	tell application "System Events" to tell process appName
-		tell menu 1 of menu bar item "View" of menu bar 1
-			if exists menu item participantsClose then
-				click menu item participantsClose
-				my logMessage("Participants panel closed.", logFile)
+		set menuItems to every menu item of menu 1 of menu bar 2
+		repeat with m in menuItems
+			if name of m starts with "Manage Participants" then
+				click m
 				delay 1
-			end if
-			if exists menu item participantsOpen then
-				click menu item participantsOpen
 				my logMessage("Participants panel started.", logFile)
-			end if
-		end tell
-	end tell
-end startParticipantWindow
-
-on standaloneParticipantWindow()
-	tell application appName to activate
-	set _return to missing value
-	tell application "System Events" to tell process appName
-		set _wins to windows -- The list of windows of the Zoom application
-		repeat with w in _wins
-			if name of w starts with "Participants" then
-				set _return to w -- We found the free floating "Participants (NNN)" window
+				exit repeat
 			end if
 		end repeat
 	end tell
-	return _return -- This is either the handle to the window or missing value
-end standaloneParticipantWindow
+end clickZoomManageParticipants
+
+on findParticipantsWindow()
+	tell application "System Events" to tell process appName
+		if exists scroll area 1 of window meetingWindow then
+			set participantWindow to window meetingWindow -- Participants panel.
+		else
+			set _zoomWins to windows
+			repeat with w in _zoomWins
+				if name of w starts with "Participants" then
+					set participantWindow to w -- there is a standalone Participants window
+					exit repeat
+				end if
+			end repeat
+		end if
+	end tell
+end findParticipantsWindow
+
+on startParticipantWindow()
+	tell application appName to activate
+	tell application "System Events" to tell process appName
+		my findParticipantsWindow()
+		if participantWindow is missing value then
+			my clickZoomManageParticipants() -- participant window started
+		end if
+		my findParticipantsWindow()
+	end tell
+end startParticipantWindow
 
 on checkZoomMeetingRunning()
 	tell application appName to activate
@@ -193,11 +201,7 @@ end writeToRoster
 on generateRoster()
 	tell application appName to activate
 	tell application "System Events" to tell process appName
-		set _participantWin to my standaloneParticipantWindow()
-		if _participantWin is missing value then
-			set _participantWin to window meetingWindow
-		end if
-		tell outline 1 of scroll area 1 of _participantWin
+		tell outline 1 of scroll area 1 of participantWindow
 			set myParticipants to (rows)
 			set _intro to "=== " & (my formatDateTime(current date)) & " ==="
 			my writeToRoster(_intro, meetingRoster)
