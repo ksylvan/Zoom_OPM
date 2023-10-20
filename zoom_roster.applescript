@@ -256,6 +256,44 @@ on generateRoster()
 	end tell
 end generateRoster
 
+on letPeopleIn()
+	set checkForWaitingRoom to true
+	repeat while checkForWaitingRoom
+		tell application "System Events" to tell process appName
+			tell outline 1 of scroll area 1 of participantWindow
+				-- Fetch all the rows in the Participants list.
+				set participantRows to every row
+				-- Check to see if Waiting Room exists.
+				set firstRowName to (get value of static text of UI element of row 1) as string
+				if firstRowName does not start with "Waiting Room " then
+					exit repeat
+				end if
+				set checkForWaitingRoom to false
+				-- Loop through each participant row and click the "Admit" button.
+				repeat with aRow in participantRows
+					if checkForWaitingRoom then
+						exit repeat
+					end if
+					set pName to (get value of static text of UI element of aRow) as string
+					if pName starts with "Joined " then
+						exit repeat
+					end if
+					set allElem to UI elements of (item 1 of UI element of aRow)
+					repeat with anElem in allElem
+						if description of anElem is "Admit" then
+							click anElem
+							delay 1
+							set checkForWaitingRoom to true
+							my logMessage("Waiting Room: Admitted " & pName, logFile)
+							exit repeat
+						end if
+					end repeat
+				end repeat
+			end tell
+		end tell
+	end repeat
+end letPeopleIn
+
 -- Main logic
 on main()
 	my setUpFiles()
@@ -266,6 +304,7 @@ on main()
 		my checkZoomMeetingRunning()
 		my startParticipantWindow()
 		my generateRoster()
+		my letPeopleIn()
 	on error errMsg number errNum
 		set e_str to "Error: " & errMsg & " (" & errNum & ")"
 		my logMessage(e_str, logFile)
