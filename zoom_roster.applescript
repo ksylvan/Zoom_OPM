@@ -111,7 +111,7 @@ on checkZoomRunning()
 	set appVersion to version of application appName
 end checkZoomRunning
 
-on clickZoomManageParticipants()
+on enableParticipantsWindow()
 	(*
 	This code is used to click the "Manage Participants" menu item of the status menu bar.
 	A delay of 1 second is added after the click.
@@ -119,7 +119,9 @@ on clickZoomManageParticipants()
 	tell application "System Events" to tell process appName
 		set menuItems to every menu item of menu 1 of menu bar 2
 		repeat with m in menuItems
-			if name of m starts with "Manage Participants" then
+			-- The menu item is "Manage Participants (N) if you are a host/co-host
+			-- If you are neither, the menu item is "Participants (N)"
+			if name of m contains "Participants" then
 				click m
 				delay 1
 				my logMessage("Participants panel started.", logFile)
@@ -127,7 +129,7 @@ on clickZoomManageParticipants()
 			end if
 		end repeat
 	end tell
-end clickZoomManageParticipants
+end enableParticipantsWindow
 
 on findParticipantsWindow()
 	tell application "System Events" to tell process appName
@@ -150,7 +152,7 @@ on startParticipantWindow()
 	tell application "System Events" to tell process appName
 		my findParticipantsWindow()
 		if participantWindow is missing value then
-			my clickZoomManageParticipants() -- participant window started
+			my enableParticipantsWindow() -- participant window started
 		end if
 		my findParticipantsWindow()
 	end tell
