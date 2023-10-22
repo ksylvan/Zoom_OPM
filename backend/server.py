@@ -26,10 +26,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import sqlite3
 import shutil
+import subprocess
 
 app = FastAPI()
 
 DATABASE = 'zoom_meeting.db'
+zoom_manage = "../zoom-manage"
 
 # Add CORS middleware
 app.add_middleware(
@@ -118,6 +120,21 @@ def update_joined_meeting(name: str = Body(..., embed=True)):
 def reset_meeting():
     reset_db()
     return {"message": "Database reset successfully."}
+
+@app.post("/cmd_roster")
+def execute_roster():
+    result = subprocess.run([zoom_manage, "roster"], capture_output=True)
+    return result
+
+@app.post("/cmd_hands")
+def execute_hands():
+    result = subprocess.run([zoom_manage, "hands"], capture_output=True)
+    return result
+
+@app.post("/cmd_admit")
+def execute_hands():
+    result = subprocess.run([zoom_manage, "admit"], capture_output=True)
+    return result
 
 if __name__ == "__main__":
     init_db()  # Initialize the database

@@ -32,6 +32,9 @@
     <!-- Include Vue and BootstrapVue JS -->
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.21.2/dist/bootstrap-vue.js"></script>
+    <!-- Load Axios library for making HTTP requests -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
     <style>
         h1 {
             text-align: center;
@@ -42,6 +45,20 @@
 <body>
     <div id="app" class="container mt-5">
         <div class="center-container"><h1>Zoom Meeting Tracker</h1></div>
+        <b-row>
+            <b-col>
+                <button @click="confirmReset" v-tooltip="'Reset the Zoom Meeting Tracker database.'" style="background-color: pink;">Database Reset</button>
+
+            </b-col>
+        </b-row>
+        <b-row>&nbsp;</b-row>
+        <b-row>
+            <b-col>
+                <button @click="postRequest('cmd_roster')" v-tooltip="'Get current roster.'" style="background-color: lightgreen;">Roster</button>
+                <button @click="postRequest('cmd_hands')" v-tooltip="'Get the current list of Hands Raised'" style="background-color: lightgreen;">Hands</button>
+                <button @click="postRequest('cmd_admit')" v-tooltip="'Admit people from Waiting Room'" style="background-color: lightgreen;">Admit All</button>
+            </b-col>
+        </b-row>
         <b-row>&nbsp;</b-row>
         <b-row>
             <b-col>
@@ -89,7 +106,7 @@
             },
             methods: {
                 fetchData(endpoint, stateProperty) {
-                    fetch(`http://localhost:5000${endpoint}`)
+                    fetch(`http://localhost:5000/${endpoint}`)
                         .then(response => response.json())
                         .then(data => {
                             let transformedData = Object.entries(data).map(([name, { first_seen, last_seen }]) => ({ name, first_seen, last_seen }));
@@ -97,8 +114,27 @@
                         });
                 },
                 refreshData() {
-                    this.fetchData('/waiting', 'waitingRoom');
-                    this.fetchData('/joined', 'joinedMeeting');
+                    this.fetchData('waiting', 'waitingRoom');
+                    this.fetchData('joined', 'joinedMeeting');
+                },
+                confirmReset: function() {
+                    if (confirm("Do you really want to do this?")) {
+                        this.postRequest('reset');
+                    }
+                },
+                postRequest: function(command) {
+                    axios.post(`http://localhost:5000/${command}`)
+                        .then(response => {
+                            console.log(response.data);
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
+                }
+            },
+            directives: {
+                tooltip: function(el, binding) {
+                    el.setAttribute('title', binding.value);
                 }
             }
         });
