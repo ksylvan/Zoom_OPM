@@ -150,7 +150,7 @@ the user to start a meeting.
 
 - Make the script more robust to variations in the Zoom application user interface.
 
-- Assist with craeting named Breakout Rooms.
+- Assist with creating named Breakout Rooms.
 
 ## Contributing
 
