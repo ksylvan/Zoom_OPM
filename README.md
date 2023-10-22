@@ -14,6 +14,7 @@ via [Zoom][zoom], the software here is general purpose and can be used by anyone
 large Zoom meetings or seminars.
 
 - [Zoom OPM Tools](#zoom-opm-tools)
+  - [Confidentiality and Privacy](#confidentiality-and-privacy)
   - [Zoom OPM Tools components](#zoom-opm-tools-components)
     - [Frontend Zoom Meeting Tracker dashboard](#frontend-zoom-meeting-tracker-dashboard)
     - [Backend Server](#backend-server)
@@ -21,12 +22,19 @@ large Zoom meetings or seminars.
   - [Platform Compatibility](#platform-compatibility)
   - [Features](#features)
   - [How to Use](#how-to-use)
-  - [Commands](#commands)
+    - [Commands](#commands)
   - [Dependencies](#dependencies)
     - [Known Issues](#known-issues)
     - [Future Enhancements](#future-enhancements)
   - [Contributing](#contributing)
   - [License](#license)
+
+## Confidentiality and Privacy
+
+Please ensure you have the necessary permissions and you're following
+best practices when using scripts and automations during Zoom meetings.
+
+Always respect privacy and confidentiality.
 
 ## Zoom OPM Tools components
 
@@ -93,9 +101,17 @@ install python3 on your Mac using [homebrew][homebrew].
 
 1. Ensure that the Zoom application is running and that you're in a Zoom
    meeting.
-2. Execute the script, providing a specific command if needed.
+2. Execute the `zoom-manage` script, to run the backend server.
 
-## Commands
+   ```bash
+   ./zoom-manage server
+   ```
+
+3. Start the dashboard and run the specific commads as needed (for example,
+   grab the current roster by using the `roster` command, or note down all the
+   hands that are raised by using the `hands` command).
+
+### Commands
 
 - **help**: Display a usage message detailing the available commands.
 - **server**: Start the backend server. This will launch the server in its own terminal window.
@@ -121,7 +137,8 @@ This will generate a roster of current participants in the Zoom meeting.
 
 ## Dependencies
 
-The backend server and dashboard require additional setup and may have their own dependencies. Ensure that you've followed any provided setup instructions.
+The backend server and dashboard require additional setup and may have their own dependencies.
+Ensure that you've followed the provided [setup instructions](./backend/README.md).
 
 ### Known Issues
 
