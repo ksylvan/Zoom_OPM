@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c) 2023 Kayvan A. Sylvan
+
+ Permission is hereby granted, free of charge, to any person obtaining a copy of
+ this software and associated documentation files (the "Software"), to deal in
+ the Software without restriction, including without limitation the rights to
+ use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ the Software, and to permit persons to whom the Software is furnished to do so,
+ subject to the following conditions:
+
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ -->
+
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoom Meeting Tracker</title>
+    <!-- Include Bootstrap CSS and BootstrapVue CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.21.2/dist/bootstrap-vue.min.css" rel="stylesheet">
+    <!-- Include Vue and BootstrapVue JS -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-vue@2.21.2/dist/bootstrap-vue.js"></script>
+    <style>
+        h1 {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" class="container mt-5">
+        <div class="center-container"><h1>Zoom Meeting Tracker</h1></div>
+        <b-row>&nbsp;</b-row>
+        <b-row>
+            <b-col>
+                <h3>Waiting Room</h3>
+                <b-table :items="waitingRoom" :fields="fields" striped hover show-empty :sort-by.sync="sortBy" :sort-desc.sync="sortDesc">
+                    <template v-slot:cell(rowNum)="row">
+                        {{ row.index + 1 }}
+                    </template>
+                </b-table>
+            </b-col>
+            <b-col>
+                <h3>Joined</h3>
+                <b-table :items="joinedMeeting" :fields="fields" striped hover show-empty :sort-by.sync="sortBy" :sort-desc.sync="sortDesc">
+                    <template v-slot:cell(rowNum)="row">
+                        {{ row.index + 1 }}
+                    </template>
+                </b-table>
+            </b-col>
+        </b-row>
+        <b-row>
+        <a href="https://github.com/ksylvan/Zoom_OPM">Zoom OPM Tools</a>&nbsp;by&nbsp;<a href="https://www.linkedin.com/in/kayvansylvan/">Kayvan Sylvan</a>
+        </b-row>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    fields: [
+                        { key: 'rowNum', label: '#', sortable: false },
+                        { key: 'name', label: 'Name', sortable: true },
+                        { key: 'first_seen', label: 'First Seen', sortable: true },
+                        { key: 'last_seen', label: 'Last Seen', sortable: true }
+                    ],
+                    waitingRoom: [],
+                    joinedMeeting: [],
+                    sortBy: 'name',
+                    sortDesc: false
+                };
+            },
+            mounted() {
+                this.refreshData(); // Fetch data immediately upon mounting
+                setInterval(this.refreshData, 10000); // Refresh data every 10 seconds
+            },
+            methods: {
+                fetchData(endpoint, stateProperty) {
+                    fetch(`http://localhost:5000${endpoint}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            let transformedData = Object.entries(data).map(([name, { first_seen, last_seen }]) => ({ name, first_seen, last_seen }));
+                            this[stateProperty] = transformedData;
+                        });
+                },
+                refreshData() {
+                    this.fetchData('/waiting', 'waitingRoom');
+                    this.fetchData('/joined', 'joinedMeeting');
+                }
+            }
+        });
+    </script>
+        
+</body>
+
+</html>

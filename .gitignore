@@ -1,3 +1,5 @@
 # Ignore the log and roster files.
 logs/
 .DS_Store
+backend/__pycache__
+backend/zoom_meeting*.db

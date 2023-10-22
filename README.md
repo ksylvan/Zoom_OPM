@@ -10,32 +10,64 @@ individuals and organizations embark on their journey of personal and profession
 effectveness.
 
 While this repository is meant to be used by OPMs who coordinate large meetings or wokshops
-via [Zoom][zoom], the scripts are general purpose and can be used by anyone who runs large Zoom meetings
-or seminars.
-
-## Table of Contents
+via [Zoom][zoom], the software here is general purpose and can be used by anyone who runs
+large Zoom meetings or seminars.
 
 - [Zoom OPM Tools](#zoom-opm-tools)
-  - [Table of Contents](#table-of-contents)
-  - [Zoom Roster script](#zoom-roster-script)
+  - [Zoom OPM Tools components](#zoom-opm-tools-components)
+    - [Frontend Zoom Meeting Tracker dashboard](#frontend-zoom-meeting-tracker-dashboard)
+    - [Backend Server](#backend-server)
+    - [The Zoom Manage utility application](#the-zoom-manage-utility-application)
   - [Platform Compatibility](#platform-compatibility)
-    - [Features](#features)
-    - [Usage](#usage)
-    - [Script Overview](#script-overview)
+  - [Features](#features)
+  - [How to Use](#how-to-use)
+  - [Commands](#commands)
+  - [Dependencies](#dependencies)
     - [Known Issues](#known-issues)
     - [Future Enhancements](#future-enhancements)
   - [Contributing](#contributing)
   - [License](#license)
 
-## Zoom Roster script
+## Zoom OPM Tools components
 
-This script automates the process of generating a roster list from a running Zoom
-meeting. It creates two files in the `logs/` subdirectory of the directory from
-which the script is run, namely `YYYYMMDD-log.txt` and `YYYYMMDD-roster.txt`,
-where `YYYYMMDD` is the current date.
+This package is composed of a few interconnected components:
 
-The script checks if the Zoom app is running, whether a Zoom meeting is in progress,
-and queries the Participants pane to gather the list of participants.
+1. The frontend dashboard.
+2. The backend server that is used to store the Zoom Meeting participation information
+   (who joined, who was in the "Waiting Room").
+3. The `zoom-manage` utility.
+
+These components interact with each other and the Zoom application as illustrated here:
+
+![Architecture][architecture-diagram]
+
+### Frontend Zoom Meeting Tracker dashboard
+
+There is a web dashboard for the "Zoom Meeting Tracker".
+
+![Dasboard][dashboard-pic]
+
+The dashboard is a simple [vue.js][vue-js] application that displays the cache of informmation
+that is updated and stored by the backend server. The columns of the dashboard are clickable
+and can be used to sort the data in the displayed table.
+
+### Backend Server
+
+The backend server serves as a bridge between the dashboard and the information gathered by
+the `zoom-manage` utility application. It manages the database of events related to participants
+joining the Zoom meeting and makes that information available to the dahsboard.
+
+See the documentation for the Backend Server and its API [here][backend-docs].
+
+### The Zoom Manage utility application
+
+The `zoom-manange` script is a utility written in AppleScript designed to help manage
+Zoom meetings with ease. This script automates common tasks such as tracking participants,
+handling the waiting room, monitoring raised hands, and logging meeting activities.
+
+It creates three files in the `logs/` subdirectory of the directory from
+which the script is run, namely `YYYYMMDD-log.txt`, `YYYYMMDD-roster.txt`,
+and `YYYYMMDD-hands.txt`, where `YYYYMMDD` is the current date.
 
 ## Platform Compatibility
 
@@ -45,48 +77,51 @@ compatible with most macOS versions spanning from the older releases to the late
 It has been tested on macOS Sonoma (14.0) on an Apple M2 MacBook Air, running
 Zoom version 5.16.2 (23409).
 
-### Features
+The backend component is a [FastAPI][fastapi] server written in Python3 that
+serves the "Zoom Meeting Tracker" frontend written with Javascript. You can
+install python3 on your Mac using [homebrew][homebrew].
 
-- Checks for a running Zoom application and an active Zoom meeting.
-- Creates and manages a `logs/` subdirectory for storing log and roster files.
-- Logs events and errors to a `YYYYMMDD-log.txt` file.
-- Generates a `YYYYMMDD-roster.txt` file with a list of participants in the
-  current Zoom meeting.
-- Utilizes AppleScript's GUI Scripting capabilities to interact with the Zoom
-  application's user interface.
-- When the roster is generated, the application also admiits each person in
-  the waiting room to the meeting (and logs the action in `YYYYMMDD-log.txt`)
+## Features
 
-### Usage
+1. **Participant Roster Generation**: Generate a list of participants who've joined the Zoom meeting.
+2. **Hands Raised Tracking**: Record a list of participants who've raised their hands at any point in time during the meeting.
+3. **Waiting Room Management**: Automate the process of admitting attendees from the waiting room.
+4. **Logging**: Maintain a log of meeting activities and actions taken during the meeting.
+5. **Integrated Server and Dashboard**: Run a backend server and open a Zoom Meeting Tracker dashboard for enhanced management.
 
-Ensure that your Zoom application is installed.
+## How to Use
 
-Run the script using the following command in the terminal:
+1. Ensure that the Zoom application is running and that you're in a Zoom
+   meeting.
+2. Execute the script, providing a specific command if needed.
+
+## Commands
+
+- **help**: Display a usage message detailing the available commands.
+- **server**: Start the backend server. This will launch the server in its own terminal window.
+- **dashboard**: Open the Zoom Meeting Tracker dashboard in a web browser.
+- **reset**: Reset the tracking database.
+- **roster**: Generate a current list of participants in the meeting. This is the default action if no command is specified.
+- **hands**: Generate a list of participants who've raised their hands.
+- **admit**: Admit all attendees waiting in the Zoom waiting room.
+
+To execute a command, use the following syntax:
 
 ```shell
-./zoom-roster.applescript
+/path/to/zoom-manage [command]
 ```
 
-The script will create a logs/ subdirectory (if it doesn't already exist)
-in the directory from which the script is run.
+For example:
 
-Inside the logs/ subdirectory, you will find the YYYYMMDD-log.txt and
-YYYYMMDD-roster.txt files. The YYYYMMDD-log.txt file contains log entries
-generated during the script's execution, and the YYYYMMDD-roster.txt file
-contains the list of participants in the current Zoom meeting.
+```shell
+/path/to/zoom-manage roster
+```
 
-### Script Overview
+This will generate a roster of current participants in the Zoom meeting.
 
-The script is structured into several handler functions and a main() function
-that orchestrates the execution of these handlers. Here's a brief description of
-some of the key handlers:
+## Dependencies
 
-- setUpFiles() sets up the log and roster files in the logs/ subdirectory.
-- checkZoomRunning() checks if the Zoom app is running.
-- startParticipantWindow() activates the Participants pane in the Zoom app.
-- generateRoster() gathers the names of participants and writes them to the YYYYMMDD-roster.txt file.
-- logMessage() and writeToRoster() are utility functions for writing to the log and roster files, respectively.
-- main() is the entry point of the script, invoking the other handlers in the correct order and handling any errors that occur.
+The backend server and dashboard require additional setup and may have their own dependencies. Ensure that you've followed any provided setup instructions.
 
 ### Known Issues
 
@@ -96,9 +131,9 @@ the user to start a meeting.
 
 ### Future Enhancements
 
-Improve error handling and reporting.
+- Make the script more robust to variations in the Zoom application user interface.
 
-Make the script more robust to variations in the Zoom app's user interface.
+- Assist with craeting named Breakout Rooms.
 
 ## Contributing
 
@@ -112,3 +147,9 @@ This work is Copyright (c) 2023, [Kayvan A. Sylvan][linkedin] and is released un
 [landmark]: https://www.landmarkworldwide.com/
 [zoom]: http://zoom.us
 [linkedin]: https://www.linkedin.com/in/kayvansylvan/
+[fastapi]: https://fastapi.tiangolo.com/
+[vue-js]: https://vuejs.org/
+[homebrew]: https://brew.sh/
+[backend-docs]: backend/README.md
+[dashboard-pic]: docs/dashboard.png
+[architecture-diagram]: docs/ZoomMeetingComponents.png

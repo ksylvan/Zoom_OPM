@@ -22,7 +22,10 @@
  *)
 
 -- Global properties
-property scriptName : "Zoom Roster"
+property scriptName : "Zoom Manage"
+property topLevelDirectory: missing value
+
+-- Zoom Related properties
 property appName : "zoom.us"
 property appVersion : missing value
 property topZoomWindow : "Zoom"
@@ -35,6 +38,13 @@ property participantWindow : missing value
 -- This makes it easy to store and index the logs at a later time.
 property logFile : "log.txt"
 property meetingRoster : "roster.txt"
+property handsRoster : "hands.txt"
+
+-- The FastAPI server should be running at this URL
+property trackerURL : "http://localhost:5000"
+
+-- Top level commands the script understands
+property knownCommands: {"help", "reset", "roster", "hands", "admit", "server", "dashboard"}
 
 on todayYMD()
 	-- Return the current date in the format YYYYMMDD.
@@ -51,15 +61,17 @@ on setUpFiles()
 	-- Creates a folder called "logs" in the same directory as the program if it does not already exist.
 	-- It then creates two files, logFile and meetingRoster, in the logs folder, with a prefix of the current date.
 	tell application "Finder"
-		set _logDir to container of (path to me)
-		if not (exists folder "logs" of _logDir) then
-			make new folder at _logDir with properties {name:"logs"}
+		set _currentDirectory to container of (path to me)
+		if not (exists folder "logs" of _currentDirectory) then
+			make new folder at _currentDirectory with properties {name:"logs"}
 		end if
 	end tell
-	set _logDir to POSIX path of (_logDir as text)
+	set _currentDirectory to POSIX path of (_currentDirectory as text)
 	set _prefix to my todayYMD()
-	set logFile to POSIX file (_logDir & "logs/" & _prefix & "-" & logFile)
-	set meetingRoster to POSIX file (_logDir & "logs/" & _prefix & "-" & meetingRoster)
+	set topLevelDirectory to _currentDirectory
+	set logFile to POSIX file (_currentDirectory & "logs/" & _prefix & "-" & logFile)
+	set meetingRoster to POSIX file (_currentDirectory & "logs/" & _prefix & "-" & meetingRoster)
+	set handsRoster to POSIX file (_currentDirectory & "logs/" & _prefix & "-" & handsRoster)
 end setUpFiles
 
 on formatDateTime(theDateTime)
@@ -107,7 +119,15 @@ on logMessage(message, filePath)
 end logMessage
 
 on checkZoomRunning()
-	tell application appName to activate
+	-- This code checks if an application (appName) is running and if it is,
+	-- it sets the variable appVersion to the version of the application.
+	set _isRunning to false
+	tell application "System Events"
+		set _isRunning to (name of every process) contains appName
+	end tell
+	if not _isRunning then
+		tell application appName to activate
+	end if
 	set appVersion to version of application appName
 end checkZoomRunning
 
@@ -148,7 +168,7 @@ on findParticipantsWindow()
 end findParticipantsWindow
 
 on startParticipantWindow()
-	tell application appName to activate
+	-- tell application appName to activate
 	tell application "System Events" to tell process appName
 		my findParticipantsWindow()
 		if participantWindow is missing value then
@@ -159,7 +179,7 @@ on startParticipantWindow()
 end startParticipantWindow
 
 on checkZoomMeetingRunning()
-	tell application appName to activate
+	-- tell application appName to activate
 	repeat
 		-- Make sure we are in a Zoom meeting
 		tell application "System Events" to tell process appName
@@ -174,12 +194,37 @@ on checkZoomMeetingRunning()
 end checkZoomMeetingRunning
 
 on appLogMessage(message)
-	my logMessage("=== " & message & " APPLICATION " & scriptName, logFile)
+	my logMessage("=== " & scriptName & ": " & message, logFile)
 end appLogMessage
+
+on resetTrackigData()
+	do shell script "curl -X POST " & trackerURL & "/reset"
+end resetTrackigData
+
+on trackJoined(_name)
+	if not (_name starts with "Joined ") then
+		do shell script "curl -X PUT -H 'Content-Type: application/json' -d '{\"name\": \"" & _name & "\"}' " & trackerURL & "/joined"
+	end if
+end trackJoined
+
+on trackWaiting(_name)
+	if not (_name starts with "Waiting Room ") then
+		do shell script "curl -X PUT -H 'Content-Type: application/json' -d '{\"name\": \"" & _name & "\"}' " & trackerURL & "/waiting"
+	end if
+end trackWaiting
+
+on runBackendServer()
+	tell application "Terminal" to do script "cd " & topLevelDirectory & "backend; ./server.py"
+	tell "System Events" to activate application "Terminal"
+end runBackendServer
+
+on openDashboard()
+	do shell script "open " & topLevelDirectory & "frontend/index.html"
+end openDashboard
 
 on writeToRoster(message, filePath)
 	-- Usage:
-	-- set logFilePath to (path to desktop as string) & "rostter.txt" -- Path to the roster file
+	-- set logFilePath to (path to desktop as string) & "roster.txt" -- Path to the roster file
 	-- my writeTeRoster("John Smith", logFilePath)
 	try
 		-- Open the log file for writing, creating it if it doesn't exist
@@ -199,17 +244,18 @@ on writeToRoster(message, filePath)
 end writeToRoster
 
 on generateRoster()
-	tell application appName to activate
+	-- tell application appName to activate
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
 			set myParticipants to (rows)
 			set _intro to "=== " & (my formatDateTime(current date)) & " ==="
 			my writeToRoster(_intro, meetingRoster)
-			set [_waiting, _joined] to [0, 0] -- This is the number in Waiting Room and the numner Joined
+			set [_waiting, _joined] to [0, 0] -- The number in Waiting Room and the numner Joined
 			set _num to (count myParticipants)
 			set _inWaitingList to false
 			set _inJoinedList to false
 			repeat with i from 1 to _num
+				-- properties of UI elements of UI element 1 of row i
 				set _pName to (get value of static text of UI element of row i) as string
 				if _pName starts with "Waiting Room " then
 					set _inWaitingList to true
@@ -229,12 +275,13 @@ on generateRoster()
 				if (not _inWaitingList) and (_joined > 0) then
 					set _numPrefix to " " & (_joined as string) & ". "
 				end if
-				set _pName to _numPrefix & (_pName as string)
-				my writeToRoster(_pName, meetingRoster)
+				my writeToRoster(_numPrefix & _pName, meetingRoster)
 				if _inWaitingList then
 					set _waiting to _waiting + 1
+					my trackWaiting(_pName)
 				else
 					set _joined to _joined + 1
+					my trackJoined(_pName)
 				end if
 			end repeat
 			if _joined > 1 then
@@ -250,11 +297,43 @@ on generateRoster()
 			else
 				set plural to ""
 			end if
-			set _summary to "=== " & (_sum as string) & " participant" & plural & " " & (my formatDateTime(current date)) & " ==="
+			set _summary to "=== " & (_sum as string) & " participant" & plural Â
+				& " " & (my formatDateTime(current date)) & " ==="
 			my writeToRoster(_summary, meetingRoster)
 		end tell
 	end tell
 end generateRoster
+
+on generateHandsRoster()
+	set _intro to "=== " & (my formatDateTime(current date)) & " ==="
+	my writeToRoster(_intro, handsRoster)
+	set _num to 0
+	tell application "System Events" to tell process appName
+		tell outline 1 of scroll area 1 of participantWindow
+			-- Fetch all the rows in the Participants list.
+			set participantRows to every row
+			-- Loop through each participant row and see if the hand is raised.
+			repeat with aRow in participantRows
+				set pName to (get value of static text of UI element of aRow) as string
+				set allElem to UI elements of (item 1 of UI element of aRow)
+				repeat with anElem in allElem
+					if description of anElem is "Hand raised" then
+						set _num to _num + 1
+						my writeToRoster((_num as string) & " " & pName, handsRoster)
+					end if
+				end repeat
+			end repeat
+		end tell
+	end tell
+	if _num > 1 then
+		set plural to "s"
+	else
+		set plural to ""
+	end if
+	set _summary to "=== " & (_num as string) & " hand" & plural & " raised " Â
+		& (my formatDateTime(current date)) & " ==="
+	my writeToRoster(_summary, handsRoster)
+end generateHandsRoster
 
 on letPeopleIn()
 	set checkForWaitingRoom to true
@@ -294,25 +373,62 @@ on letPeopleIn()
 	end repeat
 end letPeopleIn
 
--- Main logic
-on main()
+on usageMessage()
+	set tid to Applescript's text item delimiters
+	set AppleScript's text item delimiters to ":"
+	set path_parts to every text item of ((path to me) as string)
+	set AppleScript's text item delimiters to tid
+	
+	return linefeed & "Usage: " &  (item -1 of path_parts) & " [command]" & linefeed Â
+		& "    help - show usage message." & linefeed & linefeed Â
+		& "    server - run the backend server. Starts the server in its own terminal." & linefeed Â
+		& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
+		& "    reset - reset the tracking database." & linefeed & linefeed Â
+		& "    roster (default action) - get current roster" & linefeed Â
+		& "    hands - get the current hands raised" & linefeed Â
+		& "    admit - admit everyone in the Waiting Room"
+end usageMessage
+
+on run argv
+	set argCount to (count argv)
+	if (argCount > 0) then
+		set arg to item 1 of argv
+	else
+		set arg to "roster"
+	end if
+	if arg is "help" or arg is not in knownCommands then
+		return my usageMessage()
+	else if arg is "reset" then
+		return my resetTrackigData()
+	end if
+
 	my setUpFiles()
-	my appLogMessage("START")
+	if arg is "server" then
+		return my runBackendServer()
+	end if
+	if arg is "dashboard" then
+		return my openDashboard()
+	end if
+
+	my appLogMessage("START " & arg)
 	try
 		my checkZoomRunning()
 		my logMessage("Zoom Version: " & appVersion, logFile)
 		my checkZoomMeetingRunning()
 		my startParticipantWindow()
-		my generateRoster()
-		my letPeopleIn()
+		if arg is "roster" then
+			my generateRoster()
+		else if arg is "hands" then
+			my generateHandsRoster()
+		else if arg is "admit" then
+			my letPeopleIn()
+		end if
 	on error errMsg number errNum
 		set e_str to "Error: " & errMsg & " (" & errNum & ")"
 		my logMessage(e_str, logFile)
-		my appLogMessage("ABORT")
+		my appLogMessage("ABORT " & arg)
 		display dialog e_str buttons {"Quit"}
 		error e_str number errNum
 	end try
-	my appLogMessage("END")
-end main
-
-my main()
+	my appLogMessage("END " & arg)
+end run
