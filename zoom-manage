@@ -214,8 +214,10 @@ on trackWaiting(_name)
 end trackWaiting
 
 on runBackendServer()
-	tell application "Terminal" to do script "cd " & topLevelDirectory & "backend; ./server.py"
-	tell "System Events" to activate application "Terminal"
+	tell application "Terminal"
+		activate
+		set shell to do script "cd " & topLevelDirectory & "backend; ./server.py; exit" in window 1
+	end tell
 end runBackendServer
 
 on openDashboard()
