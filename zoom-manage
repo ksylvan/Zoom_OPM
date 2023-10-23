@@ -44,7 +44,31 @@ property handsRoster : "hands.txt"
 property trackerURL : "http://localhost:5000"
 
 -- Top level commands the script understands
-property knownCommands: {"help", "reset", "roster", "hands", "admit", "server", "dashboard"}
+property knownCommands: { Â
+	"help", "reset", "roster", "hands", "admit", "server", "dashboard", "breakout"Â
+}
+
+on usageMessage(section)
+	set tid to Applescript's text item delimiters
+	set AppleScript's text item delimiters to ":"
+	set path_parts to every text item of ((path to me) as string)
+	set AppleScript's text item delimiters to tid
+	if section is "top" then
+		return linefeed & "Usage: " &  (item -1 of path_parts) & " [command]" & linefeed Â
+			& "    help - show usage message." & linefeed & linefeed Â
+			& "    server - run the backend server. Starts the server in its own terminal." & linefeed Â
+			& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
+			& "    reset - reset the tracking database." & linefeed & linefeed Â
+			& "    roster (default action) - get current roster" & linefeed Â
+			& "    hands - get the current hands raised" & linefeed Â
+			& "    admit - admit everyone in the Waiting Room" & linefeed Â
+			& "    breakout - create a set of named breakout rooms." & linefeed
+	else
+		return linefeed & "Usage: " &  (item -1 of path_parts) & " bor.txt" & linefeed Â
+			& "Looks for " & topLevelDirectory & "breakout/bor.txt and creates the rooms named there." & linefeed Â
+			& "Missing filename!" & linefeed
+	end if
+end usageMessage
 
 on todayYMD()
 	-- Return the current date in the format YYYYMMDD.
@@ -69,9 +93,9 @@ on setUpFiles()
 	set _currentDirectory to POSIX path of (_currentDirectory as text)
 	set _prefix to my todayYMD()
 	set topLevelDirectory to _currentDirectory
-	set logFile to POSIX file (_currentDirectory & "logs/" & _prefix & "-" & logFile)
-	set meetingRoster to POSIX file (_currentDirectory & "logs/" & _prefix & "-" & meetingRoster)
-	set handsRoster to POSIX file (_currentDirectory & "logs/" & _prefix & "-" & handsRoster)
+	set logFile to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & logFile)
+	set meetingRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & meetingRoster)
+	set handsRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & handsRoster)
 end setUpFiles
 
 on formatDateTime(theDateTime)
@@ -131,38 +155,52 @@ on checkZoomRunning()
 	set appVersion to version of application appName
 end checkZoomRunning
 
-on enableParticipantsWindow()
-	(*
-	This code is used to click the "Manage Participants" menu item of the status menu bar.
-	A delay of 1 second is added after the click.
-	*)
+on clickStatusMenu(name)
+	-- Click a menu item in status menu
 	tell application "System Events" to tell process appName
 		set menuItems to every menu item of menu 1 of menu bar 2
 		repeat with m in menuItems
 			-- The menu item is "Manage Participants (N) if you are a host/co-host
 			-- If you are neither, the menu item is "Participants (N)"
-			if name of m contains "Participants" then
+			if name of m contains name then
 				click m
 				delay 1
-				my logMessage("Participants panel started.", logFile)
+				my logMessage(name & " panel started.", logFile)
 				exit repeat
 			end if
 		end repeat
 	end tell
+end clickStatusMenu
+
+on enableParticipantsWindow()
+	(*
+	This code is used to click the "Manage Participants" menu item of the status menu bar.
+	A delay of 1 second is added after the click.
+	*)
+	my clickStatusMenu("Participants")
 end enableParticipantsWindow
+
+on findSubWindow(nameOfApp, subWinName)
+	-- Look for a sub-window of nameOfApp whose name contains subWinName
+	tell application "System Events" to tell process nameOfApp
+		set _wins to windows
+		set _ret to missing value
+		repeat with w in _wins
+			if name of w starts with subWinName then
+				set _ret to w
+				exit repeat
+			end if
+		end repeat
+	end tell
+	return _ret
+end findSubWindow
 
 on findParticipantsWindow()
 	tell application "System Events" to tell process appName
 		if exists scroll area 1 of window meetingWindow then
 			set participantWindow to window meetingWindow -- Participants panel.
 		else
-			set _zoomWins to windows
-			repeat with w in _zoomWins
-				if name of w starts with "Participants" then
-					set participantWindow to w -- there is a standalone Participants window
-					exit repeat
-				end if
-			end repeat
+			set participantWindow to my findSubWindow(appName, "Participants")
 		end if
 	end tell
 end findParticipantsWindow
@@ -375,21 +413,46 @@ on letPeopleIn()
 	end repeat
 end letPeopleIn
 
-on usageMessage()
-	set tid to Applescript's text item delimiters
-	set AppleScript's text item delimiters to ":"
-	set path_parts to every text item of ((path to me) as string)
-	set AppleScript's text item delimiters to tid
-	
-	return linefeed & "Usage: " &  (item -1 of path_parts) & " [command]" & linefeed Â
-		& "    help - show usage message." & linefeed & linefeed Â
-		& "    server - run the backend server. Starts the server in its own terminal." & linefeed Â
-		& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
-		& "    reset - reset the tracking database." & linefeed & linefeed Â
-		& "    roster (default action) - get current roster" & linefeed Â
-		& "    hands - get the current hands raised" & linefeed Â
-		& "    admit - admit everyone in the Waiting Room"
-end usageMessage
+on createBreakoutRooms(breakoutFilename)
+	set borFilePath to topLevelDirectory & "breakout/" & breakoutFilename
+	tell application "System Events"
+		if (not exists file borFilePath) then
+			error ("Missing breakout file: " & borFilePath) number -1
+		end if
+		set _size to size of (info for POSIX file borFilePath) 
+		if _size is 0 then
+			error ("Empty breakout file: " & borFilePath) number -2
+		end if
+	end tell
+
+	set bFile to POSIX file (borFilePath)
+	set _file to open for access file bFile 
+	set fileContents to read _file
+	close access _file
+
+	set rooms to paragraphs of fileContents
+	set _filtered to {}
+	repeat with _item in rooms
+		set _s to _item as string
+		if _s is not "" and not _s starts with "#" then
+			set end of _filtered to _s
+		end if
+	end repeat
+	set rooms to _filtered
+
+	set roomCount to (count rooms)
+	if roomCount is 0 then
+		return "No rooms are defined in the file " & borFilePath & " - exiting."
+	end if
+
+	my clickStatusMenu("Breakout")
+	set _borWin to my findSubWindow(appName, "Breakout")
+	if name of _borWin contains "In Progress" then
+		return "Breakout rooms already started. Please close them first."
+	else
+		-- TODO - Here we should create the rooms
+	end if
+end createBreakoutRooms
 
 on run argv
 	set argCount to (count argv)
@@ -399,7 +462,7 @@ on run argv
 		set arg to "roster"
 	end if
 	if arg is "help" or arg is not in knownCommands then
-		return my usageMessage()
+		return my usageMessage("top")
 	else if arg is "reset" then
 		return my resetTrackigData()
 	end if
@@ -424,9 +487,14 @@ on run argv
 			my generateHandsRoster()
 		else if arg is "admit" then
 			my letPeopleIn()
+		else if arg is "breakout" then
+			if argCount is not 2 then
+				return my usageMessage("breakout")
+			end if
+			return my createBreakoutRooms(item 2 of argv)
 		end if
 	on error errMsg number errNum
-		set e_str to "Error: " & errMsg & " (" & errNum & ")"
+		set e_str to "Error: " & errMsg
 		my logMessage(e_str, logFile)
 		my appLogMessage("ABORT " & arg)
 		display dialog e_str buttons {"Quit"}
