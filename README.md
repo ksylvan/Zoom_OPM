@@ -55,7 +55,7 @@ There is a web dashboard for the "Zoom Meeting Tracker".
 
 ![Dasboard][dashboard-pic]
 
-The dashboard is a simple [vue.js][vue-js] application that displays the cache of informmation
+The dashboard is a simple [vue.js][vue-js] application that displays the cache of information
 that is updated and stored by the backend server. The columns of the dashboard are clickable
 and can be used to sort the data in the displayed table.
 
