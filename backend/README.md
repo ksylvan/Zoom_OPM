@@ -83,6 +83,24 @@ The server will start on <http://localhost:5000>
 Note: This method also copies the `zoom_meeting.db` file to `zoom_meeting-YYYYMMDD-HHMMSS.db`
 before resetting the database.
 
+### 6. Meeting Roster
+
+- **URL**: `/cmd_roster`
+- **Method**: `POST`
+- **Response**: Run the `zoom-manager roster` command.
+
+### 7. Capture Hands
+
+- **URL**: `/cmd_hands`
+- **Method**: `POST`
+- **Response**: Run the `zoom-manager hands` command.
+
+### 8. Admit All
+
+- **URL**: `/cmd_admit`
+- **Method**: `POST`
+- **Response**: Run the `zoom-manager admit` command.
+
 ## License
 
 This software is provided under the MIT License. See the provided [LICENSE](../LICENSE) file for details.

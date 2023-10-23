@@ -21,7 +21,7 @@ large Zoom meetings or seminars.
     - [The Zoom Manage utility application](#the-zoom-manage-utility-application)
   - [Platform Compatibility](#platform-compatibility)
   - [Features](#features)
-  - [How to Use](#how-to-use)
+  - [Quick Start](#quick-start)
     - [Commands](#commands)
   - [Dependencies](#dependencies)
     - [Known Issues](#known-issues)
@@ -97,7 +97,7 @@ install python3 on your Mac using [homebrew][homebrew].
 4. **Logging**: Maintain a log of meeting activities and actions taken during the meeting.
 5. **Integrated Server and Dashboard**: Run a backend server and open a Zoom Meeting Tracker dashboard for enhanced management.
 
-## How to Use
+## Quick Start
 
 1. Ensure that the Zoom application is running and that you're in a Zoom
    meeting.
@@ -107,9 +107,14 @@ install python3 on your Mac using [homebrew][homebrew].
    ./zoom-manage server
    ```
 
-3. Start the dashboard and run the specific commads as needed (for example,
-   grab the current roster by using the `roster` command, or note down all the
-   hands that are raised by using the `hands` command).
+3. Start the dashboard.
+
+   ```bash
+   ./zoom-manage dashboard
+   ```
+
+   You can now the specific commads as needed (for example, grab the current roster by using
+   the `roster` command, or capture all the hands that are raised by using the `hands` command).
 
 ### Commands
 
