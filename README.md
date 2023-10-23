@@ -113,8 +113,10 @@ install python3 on your Mac using [homebrew][homebrew].
    ./zoom-manage dashboard
    ```
 
-   You can now the specific commands as needed (for example, grab the current roster by using
+   You can now execute specific commands as needed (for example, grab the current roster by using
    the `roster` command, or capture all the hands that are raised by using the `hands` command).
+
+   The most common commands are also available in the dashboard.
 
 ### Commands
 
