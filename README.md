@@ -138,7 +138,7 @@ This will generate a roster of current participants in the Zoom meeting.
 ## Dependencies
 
 The backend server and dashboard require additional setup and may have their own dependencies.
-Ensure that you've followed the provided [setup instructions](./backend/README.md).
+Ensure that you've followed the provided [setup instructions][backend-docs].
 
 ### Known Issues
 
@@ -151,6 +151,8 @@ the user to start a meeting.
 - Make the script more robust to variations in the Zoom application user interface.
 
 - Assist with creating named Breakout Rooms.
+
+- Port the [zoom-manage][zoom-manage-scrip] script to Windows. To contribute to a Windows version, please read [this note][windows] about potential pathways to make this happen.
 
 ## Contributing
 
@@ -170,3 +172,5 @@ This work is Copyright (c) 2023, [Kayvan A. Sylvan][linkedin] and is released un
 [backend-docs]: backend/README.md
 [dashboard-pic]: docs/dashboard.png
 [architecture-diagram]: docs/ZoomMeetingComponents.png
+[windows]: docs/Windows.md
+[zoom-manage-scrip]: ./zoom-manage
