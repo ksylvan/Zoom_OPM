@@ -62,6 +62,26 @@
         <b-row>&nbsp;</b-row>
         <b-row>
             <b-col>
+                <b-form-checkbox v-model="autoUpdate" switch>
+                    Automatic Roster Update
+                </b-form-checkbox>
+            </b-col>
+        </b-row>
+        <b-row>
+            <b-col md="6">
+                <b-form-group label="Auto-Update Interval (seconds):">
+                    <b-form-input v-model.number="autoUpdateInterval" type="number" min="1" :disabled="!autoUpdate"></b-form-input>
+                </b-form-group>
+            </b-col>
+            <b-col md="6">
+                <b-form-group label="Data Refresh Interval (seconds):">
+                    <b-form-input v-model.number="dataRefreshInterval" type="number" min="1"></b-form-input>
+                </b-form-group>
+            </b-col>
+        </b-row>
+        <b-row>&nbsp;</b-row>
+        <b-row>
+            <b-col>
                 <h3>Waiting Room</h3>
                 <b-table :items="waitingRoom" :fields="fields" striped hover show-empty :sort-by.sync="sortBy" :sort-desc.sync="sortDesc">
                     <template v-slot:cell(rowNum)="row">
@@ -97,12 +117,28 @@
                     waitingRoom: [],
                     joinedMeeting: [],
                     sortBy: 'name',
-                    sortDesc: false
+                    sortDesc: false,
+                    autoUpdate: false,
+                    dataRefreshInterval: 10,  // Default value
+                    autoUpdateInterval: 30,   // Default value
+                    dataRefreshTimer: null,
+                    autoUpdateTimer: null  
                 };
             },
             mounted() {
                 this.refreshData(); // Fetch data immediately upon mounting
-                setInterval(this.refreshData, 10000); // Refresh data every 10 seconds
+                this.dataRefreshTimer = setInterval(this.refreshData, this.dataRefreshInterval * 1000);
+                this.autoUpdateTimer = setInterval(this.autoUpdateRoster, this.autoUpdateInterval * 1000);
+            },
+            watch: {
+                dataRefreshInterval(newInterval, oldInterval) {
+                    clearInterval(this.dataRefreshTimer);
+                    this.dataRefreshTimer = setInterval(this.refreshData, newInterval * 1000);
+                },
+                autoUpdateInterval(newInterval, oldInterval) {
+                    clearInterval(this.autoUpdateTimer);
+                    this.autoUpdateTimer = setInterval(this.autoUpdateRoster, newInterval * 1000);
+                },
             },
             methods: {
                 fetchData(endpoint, stateProperty) {
@@ -116,6 +152,11 @@
                 refreshData() {
                     this.fetchData('waiting', 'waitingRoom');
                     this.fetchData('joined', 'joinedMeeting');
+                },
+                autoUpdateRoster: function() {
+                    if (this.autoUpdate) {
+                        this.postRequest('cmd_roster');
+                    }
                 },
                 confirmReset: function() {
                     if (confirm("Do you really want to do this?")) {
