@@ -4,12 +4,12 @@ Welcome to the Zoom OPM Tools repository, a place created with a single clear in
 lives of Online Program Managers (OPMs) easier as they deliver the personal and business development
 programs of [Landmark Worldwide][landmark] via [Zoom][zoom] to a global audience.
 
-Every day, all over the world, Online Program Managers, in partnership wth Landmark Program Leaders,
+Every day, all over the world, Online Program Managers, in partnership with Landmark Program Leaders,
 are expanding the reach of Landmark's transformative programs, creating the space inside which
 individuals and organizations embark on their journey of personal and professional excellence and
-effectveness.
+effectiveness.
 
-While this repository is meant to be used by OPMs who coordinate large meetings or wokshops
+While this repository is meant to be used by OPMs who coordinate large meetings or workshops
 via [Zoom][zoom], the software here is general purpose and can be used by anyone who runs
 large Zoom meetings or seminars.
 
@@ -31,7 +31,7 @@ large Zoom meetings or seminars.
 
 ## Confidentiality and Privacy
 
-Please ensure you have the necessary permissions and you're following
+Please ensure you have the necessary permissions, and you're following
 best practices when using scripts and automations during Zoom meetings.
 
 Always respect privacy and confidentiality.
@@ -63,7 +63,7 @@ and can be used to sort the data in the displayed table.
 
 The backend server serves as a bridge between the dashboard and the information gathered by
 the `zoom-manage` utility application. It manages the database of events related to participants
-joining the Zoom meeting and makes that information available to the dahsboard.
+joining the Zoom meeting and makes that information available to the dashboard.
 
 See the documentation for the Backend Server and its API [here][backend-docs].
 
@@ -86,7 +86,7 @@ It has been tested on macOS Sonoma (14.0) on an Apple M2 MacBook Air, running
 Zoom version 5.16.2 (23409).
 
 The backend component is a [FastAPI][fastapi] server written in Python3 that
-serves the "Zoom Meeting Tracker" frontend written with Javascript. You can
+serves the "Zoom Meeting Tracker" frontend written with JavaScript. You can
 install python3 on your Mac using [homebrew][homebrew].
 
 ## Features
@@ -113,7 +113,7 @@ install python3 on your Mac using [homebrew][homebrew].
    ./zoom-manage dashboard
    ```
 
-   You can now the specific commads as needed (for example, grab the current roster by using
+   You can now the specific commands as needed (for example, grab the current roster by using
    the `roster` command, or capture all the hands that are raised by using the `hands` command).
 
 ### Commands
