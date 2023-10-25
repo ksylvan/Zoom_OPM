@@ -47,15 +47,15 @@
         </div>
         <b-row>
             <b-col>
-                <button @click="confirmReset" v-tooltip="'Reset the Zoom Meeting Tracker database.'" style="background-color: pink;">Database Reset</button>
+                <b-button variant="danger" @click="confirmReset" v-tooltip="'Reset the Zoom Meeting Tracker database.'">Database Reset</b-button>
             </b-col>
         </b-row>
         <b-row>&nbsp;</b-row>
         <b-row>
             <b-col>
-                <button @click="postRequest('cmd_roster')" v-tooltip="'Get current roster.'" style="background-color: lightgreen;">Roster</button>
-                <button @click="postRequest('cmd_hands')" v-tooltip="'Get the current list of Hands Raised'" style="background-color: lightgreen;">Hands</button>
-                <button @click="postRequest('cmd_admit')" v-tooltip="'Admit people from Waiting Room'" style="background-color: lightgreen;">Admit All</button>
+                <b-button variant="primary" pill @click="postRequest('cmd_roster')" v-tooltip="'Get current roster'">Roster</b-button>
+                <b-button variant="primary" pill @click="postRequest('cmd_hands')" v-tooltip="'Get the current list of Hands Raised'">Hands</b-button>
+                <b-button variant="primary" pill @click="postRequest('cmd_admit')" v-tooltip="'Admit people from Waiting Room'">Admit All</b-button>
             </b-col>
         </b-row>
         <b-row>&nbsp;</b-row>
