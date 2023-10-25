@@ -497,7 +497,6 @@ on run argv
 		set e_str to "Error: " & errMsg
 		my logMessage(e_str, logFile)
 		my appLogMessage("ABORT " & arg)
-		display dialog e_str buttons {"Quit"}
 		error e_str number errNum
 	end try
 	my appLogMessage("END " & arg)

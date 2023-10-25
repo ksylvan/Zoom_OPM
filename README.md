@@ -1,5 +1,7 @@
 # Zoom OPM Tools
 
+![Zoom OPM Tools][zoom-opm-tools-logo]
+
 Welcome to the Zoom OPM Tools repository, a place created with a single clear intention: to make the
 lives of Online Program Managers (OPMs) easier as they deliver the personal and business development
 programs of [Landmark Worldwide][landmark] via [Zoom][zoom] to a global audience.
@@ -181,3 +183,4 @@ This work is Copyright (c) 2023, [Kayvan A. Sylvan][linkedin] and is released un
 [architecture-diagram]: docs/ZoomMeetingComponents.png
 [windows]: docs/Windows.md
 [zoom-manage-scrip]: ./zoom-manage
+[zoom-opm-tools-logo]: ./frontend/zoom-opm-tools.png

@@ -46,6 +46,10 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 
 The server will start on <http://localhost:5000>
 
+You can also see the auto-generated Swagger style interactive documentation at
+<[fastapi-swagger]> or ReDoc style page at <[fastapi-redoc]>.
+See the [Fast API Documentation][fastapi-docs] for more information.
+
 ## API Endpoints
 
 ### 1. Get Participants in Waiting Room
@@ -104,3 +108,7 @@ before resetting the database.
 ## License
 
 This software is provided under the MIT License. See the provided [LICENSE](../LICENSE) file for details.
+
+[fastapi-swagger]: ttp://localhost:5000/doc
+[fastapi-redoc]: ttp://localhost:5000/redo
+[fastapi-docs]: https://fastapi.tiangolo.com/#interactive-api-docs

@@ -1,6 +1,6 @@
 # Breakout Room Setup
 
-Place files inside this directory using whatever naming scheeme you want.
+Place files inside this directory using whatever naming scheme you want.
 
 Each file should contain the names of the breakout rooms, each on a line by itsef.
 
