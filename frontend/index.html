@@ -47,7 +47,10 @@
     <div id="app" class="container mt-5">
         <div style="text-align: center;">
             <img src="./zoom-opm-tools-small.png" alt="Zoom OPM Tools Logo" width="25%" height="25%" >
-            <div class="center-container"><h1>Zoom Meeting Tracker</h1></div>
+            <div class="center-container">
+                <h1>Zoom Meeting Tracker</h1>
+                <p><a href="https://github.com/ksylvan/Zoom_OPM">Zoom OPM Tools</a>&nbsp;by&nbsp;<a href="https://www.linkedin.com/in/kayvansylvan/">Kayvan Sylvan</a></p>
+            </div>
         </div>
         <b-row>
             <b-col>
@@ -57,7 +60,7 @@
         </b-row>
         <b-row>&nbsp;</b-row>
         <b-row>
-            <b-col>
+            <b-col md="6">
                 <button @click="postRequest('cmd_roster')" v-tooltip="'Get current roster.'" style="background-color: lightgreen;">Roster</button>
                 <button @click="postRequest('cmd_hands')" v-tooltip="'Get the current list of Hands Raised'" style="background-color: lightgreen;">Hands</button>
                 <button @click="postRequest('cmd_admit')" v-tooltip="'Admit people from Waiting Room'" style="background-color: lightgreen;">Admit All</button>
@@ -101,9 +104,6 @@
                     </template>
                 </b-table>
             </b-col>
-        </b-row>
-        <b-row>
-        <a href="https://github.com/ksylvan/Zoom_OPM">Zoom OPM Tools</a>&nbsp;by&nbsp;<a href="https://www.linkedin.com/in/kayvansylvan/">Kayvan Sylvan</a>
         </b-row>
     </div>
 
