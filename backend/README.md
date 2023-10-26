@@ -109,6 +109,6 @@ before resetting the database.
 
 This software is provided under the MIT License. See the provided [LICENSE](../LICENSE) file for details.
 
-[fastapi-swagger]: http://localhost:5000/doc
-[fastapi-redoc]: http://localhost:5000/redo
+[fastapi-swagger]: http://localhost:5000/docs
+[fastapi-redoc]: http://localhost:5000/redoc
 [fastapi-docs]: https://fastapi.tiangolo.com/#interactive-api-docs
