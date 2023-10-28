@@ -23,7 +23,7 @@
 
 -- Global properties
 property scriptName : "Zoom Manage"
-property topLevelDirectory: missing value
+property topLevelDirectory : missing value
 
 -- Zoom Related properties
 property appName : "zoom.us"
@@ -44,17 +44,17 @@ property handsRoster : "hands.txt"
 property trackerURL : "http://localhost:5000"
 
 -- Top level commands the script understands
-property knownCommands: { Â
-	"help", "reset", "roster", "hands", "admit", "server", "dashboard", "breakout"Â
-}
+property knownCommands : {Â
+	"help", "reset", "roster", "hands", "admit", "server", "dashboard", Â
+	"breakout"}
 
 on usageMessage(section)
-	set tid to Applescript's text item delimiters
+	set tid to AppleScript's text item delimiters
 	set AppleScript's text item delimiters to ":"
 	set path_parts to every text item of ((path to me) as string)
 	set AppleScript's text item delimiters to tid
 	if section is "top" then
-		return linefeed & "Usage: " &  (item -1 of path_parts) & " [command]" & linefeed Â
+		return linefeed & "Usage: " & (item -1 of path_parts) & " [command]" & linefeed Â
 			& "    help - show usage message." & linefeed & linefeed Â
 			& "    server - run the backend server. Starts the server in its own terminal." & linefeed Â
 			& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
@@ -64,7 +64,7 @@ on usageMessage(section)
 			& "    admit - admit everyone in the Waiting Room" & linefeed Â
 			& "    breakout - create a set of named breakout rooms." & linefeed
 	else
-		return linefeed & "Usage: " &  (item -1 of path_parts) & " bor.txt" & linefeed Â
+		return linefeed & "Usage: " & (item -1 of path_parts) & " bor.txt" & linefeed Â
 			& "Looks for " & topLevelDirectory & "breakout/bor.txt and creates the rooms named there." & linefeed Â
 			& "Missing filename!" & linefeed
 	end if
@@ -155,20 +155,27 @@ on checkZoomRunning()
 	set appVersion to version of application appName
 end checkZoomRunning
 
-on clickStatusMenu(name)
-	-- Click a menu item in status menu
+on findStatusMenu(nameSubstring)
+	-- Find a status menu of Zoom that contains nameSubstring
+	set _ret to missing value
 	tell application "System Events" to tell process appName
 		set menuItems to every menu item of menu 1 of menu bar 2
 		repeat with m in menuItems
-			-- The menu item is "Manage Participants (N) if you are a host/co-host
-			-- If you are neither, the menu item is "Participants (N)"
-			if name of m contains name then
-				click m
-				delay 1
-				my logMessage(name & " panel started.", logFile)
+			if (exists name of m) and name of m contains nameSubstring then
+				set _ret to m
 				exit repeat
 			end if
 		end repeat
+	end tell
+	return _ret
+end findStatusMenu
+
+on clickStatusMenu(nameSubstring)
+	-- Click a menu item in status menu
+	tell application "System Events" to tell process appName
+		set m to my findStatusMenu(nameSubstring)
+		click m
+		delay 1
 	end tell
 end clickStatusMenu
 
@@ -178,6 +185,7 @@ on enableParticipantsWindow()
 	A delay of 1 second is added after the click.
 	*)
 	my clickStatusMenu("Participants")
+	my logMessage("Participants panel started.", logFile)
 end enableParticipantsWindow
 
 on findSubWindow(nameOfApp, subWinName)
@@ -206,7 +214,6 @@ on findParticipantsWindow()
 end findParticipantsWindow
 
 on startParticipantWindow()
-	-- tell application appName to activate
 	tell application "System Events" to tell process appName
 		my findParticipantsWindow()
 		if participantWindow is missing value then
@@ -217,12 +224,11 @@ on startParticipantWindow()
 end startParticipantWindow
 
 on checkZoomMeetingRunning()
-	-- tell application appName to activate
 	repeat
 		-- Make sure we are in a Zoom meeting
 		tell application "System Events" to tell process appName
-			set _inZoom to ((exists window meetingWindow) or (exists window sharingWindow))
-			if not (_inZoom) then
+			set _startMeetingMenu to my findStatusMenu("Join Meetiing")
+			if _startMeetingMenu is not missing value then
 				display dialog "The " & scriptName & " application needs a Zoom Meeting." & linefeed & "Please join the Zoom Meeting and press OK."
 			else
 				exit repeat
@@ -239,14 +245,29 @@ on resetTrackigData()
 	do shell script "curl -X POST " & trackerURL & "/reset"
 end resetTrackigData
 
+on replaceText(theText, searchStr, replacementStr)
+	if theText does not contain searchStr then
+		return theText -- return the original string if it doesn't contain the search string
+	end if
+	set oldDelims to AppleScript's text item delimiters -- save old delimiters
+	set AppleScript's text item delimiters to the searchStr
+	set theTextItems to every text item of theText
+	set AppleScript's text item delimiters to the replacementStr
+	set theText to theTextItems as string
+	set AppleScript's text item delimiters to oldDelims -- restore old delimiters
+	return theText
+end replaceText
+
 on trackJoined(_name)
 	if not (_name starts with "Joined ") then
+		set _name to my replaceText(_name, "'", "\\")
 		do shell script "curl -X PUT -H 'Content-Type: application/json' -d '{\"name\": \"" & _name & "\"}' " & trackerURL & "/joined"
 	end if
 end trackJoined
 
 on trackWaiting(_name)
 	if not (_name starts with "Waiting Room ") then
+		set _name to my replaceText(_name, "'", "\\")
 		do shell script "curl -X PUT -H 'Content-Type: application/json' -d '{\"name\": \"" & _name & "\"}' " & trackerURL & "/waiting"
 	end if
 end trackWaiting
@@ -370,8 +391,8 @@ on generateHandsRoster()
 	else
 		set plural to ""
 	end if
-	set _summary to "=== " & (_num as string) & " hand" & plural & " raised " Â
-		& (my formatDateTime(current date)) & " ==="
+	set _summary to "=== " & (_num as string) & " hand" & plural & Â
+		" raised " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_summary, handsRoster)
 end generateHandsRoster
 
@@ -416,35 +437,35 @@ end letPeopleIn
 on createBreakoutRooms(breakoutFilename)
 	set borFilePath to topLevelDirectory & "breakout/" & breakoutFilename
 	tell application "System Events"
-		if (not exists file borFilePath) then
+		if (not (exists file borFilePath)) then
 			error ("Missing breakout file: " & borFilePath) number -1
 		end if
-		set _size to size of (info for POSIX file borFilePath) 
+		set _size to size of (info for POSIX file borFilePath)
 		if _size is 0 then
 			error ("Empty breakout file: " & borFilePath) number -2
 		end if
 	end tell
-
+	
 	set bFile to POSIX file (borFilePath)
-	set _file to open for access file bFile 
+	set _file to open for access file bFile
 	set fileContents to read _file
 	close access _file
-
+	
 	set rooms to paragraphs of fileContents
 	set _filtered to {}
 	repeat with _item in rooms
 		set _s to _item as string
-		if _s is not "" and not _s starts with "#" then
+		if _s is not "" and _s does not start with "#" then
 			set end of _filtered to _s
 		end if
 	end repeat
 	set rooms to _filtered
-
+	
 	set roomCount to (count rooms)
 	if roomCount is 0 then
 		return "No rooms are defined in the file " & borFilePath & " - exiting."
 	end if
-
+	
 	my clickStatusMenu("Breakout")
 	set _borWin to my findSubWindow(appName, "Breakout")
 	if name of _borWin contains "In Progress" then
@@ -466,7 +487,7 @@ on run argv
 	else if arg is "reset" then
 		return my resetTrackigData()
 	end if
-
+	
 	my setUpFiles()
 	if arg is "server" then
 		return my runBackendServer()
@@ -474,7 +495,7 @@ on run argv
 	if arg is "dashboard" then
 		return my openDashboard()
 	end if
-
+	
 	my appLogMessage("START " & arg)
 	try
 		my checkZoomRunning()
