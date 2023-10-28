@@ -260,7 +260,7 @@ end replaceText
 
 on trackJoined(_name)
 	if not (_name starts with "Joined ") then
-		set _name to my replaceText(_name, "'", "\\")
+		set _name to my replaceText(_name, "'", "-")
 		do shell script "curl -X PUT -H 'Content-Type: application/json' -d '{\"name\": \"" & _name & "\"}' " & trackerURL & "/joined"
 	end if
 end trackJoined
