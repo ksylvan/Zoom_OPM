@@ -308,16 +308,15 @@ on generateRoster()
 	-- tell application appName to activate
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
-			set myParticipants to (rows)
+			set allParticipantNames to get value of static text of UI element of rows
 			set _intro to "=== " & (my formatDateTime(current date)) & " ==="
 			my writeToRoster(_intro, meetingRoster)
 			set [_waiting, _joined] to [0, 0] -- The number in Waiting Room and the numner Joined
-			set _num to (count myParticipants)
+			set _num to (count allParticipantNames)
 			set _inWaitingList to false
 			set _inJoinedList to false
 			repeat with i from 1 to _num
-				-- properties of UI elements of UI element 1 of row i
-				set _pName to (get value of static text of UI element of row i) as string
+				set _pName to item i of allParticipantNames as string
 				if _pName starts with "Waiting Room " then
 					set _inWaitingList to true
 				end if
