@@ -305,7 +305,6 @@ on writeToRoster(message, filePath)
 end writeToRoster
 
 on generateRoster()
-	-- tell application appName to activate
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
 			set allParticipantNames to get value of static text of UI element of rows
@@ -367,21 +366,24 @@ end generateRoster
 on generateHandsRoster()
 	set _intro to "=== " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_intro, handsRoster)
+	log _intro
 	set _num to 0
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
-			-- Fetch all the rows in the Participants list.
-			set participantRows to every row
-			-- Loop through each participant row and see if the hand is raised.
-			repeat with aRow in participantRows
-				set pName to (get value of static text of UI element of aRow) as string
+			set allParticipantNames to get value of static text of UI element of rows
+			set numPart to (count allParticipantNames)
+			set allRows to rows
+			repeat with i from 1 to numPart
+				set pName to item i of allParticipantNames as string
+				set aRow to item i of allRows
 				set allElem to UI elements of (item 1 of UI element of aRow)
-				repeat with anElem in allElem
-					if description of anElem is "Hand raised" then
-						set _num to _num + 1
-						my writeToRoster((_num as string) & " " & pName, handsRoster)
-					end if
-				end repeat
+				set allDescriptions to description of UI elements of (item 1 of UI element of aRow)
+				if "Hand raised" is in allDescriptions then
+					set _num to _num + 1
+					set _msgToLog to (_num as string) & " " & pName
+					my writeToRoster(_msgToLog, handsRoster)
+					log _msgToLog
+				end if
 			end repeat
 		end tell
 	end tell
@@ -393,6 +395,7 @@ on generateHandsRoster()
 	set _summary to "=== " & (_num as string) & " hand" & plural & Â
 		" raised " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_summary, handsRoster)
+	log _summary
 end generateHandsRoster
 
 on letPeopleIn()
