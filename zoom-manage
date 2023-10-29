@@ -276,18 +276,29 @@ on replaceText(theText, searchStr, replacementStr)
 	return theText
 end replaceText
 
-on trackJoined(_name)
-	if not (_name starts with "Joined ") then
-		set _name to my replaceText(_name, "'", "-")
-		do shell script "curl -X PUT -H 'Content-Type: application/json' -d '{\"name\": \"" & _name & "\"}' " & trackerURL & "/joined"
+on trackList(_nameList, apiEndpoint)
+	if (count _nameList) is 0 then
+		return
 	end if
+	set cmd to "curl -X PUT -H 'Content-Type: application/json' -d ' ["
+	set qList to {}
+	repeat with n in _nameList
+		set qList to qList & {"\"" & n & "\""}
+	end repeat
+	set _tid to AppleScript's text item delimiters
+	set AppleScript's text item delimiters to ","
+	set cmd to cmd & (qList as string) & "]' " & trackerURL & apiEndpoint
+	set AppleScript's text item delimiters to _tid
+	do shell script cmd
+	-- log cmd
 end trackJoined
 
-on trackWaiting(_name)
-	if not (_name starts with "Waiting Room ") then
-		set _name to my replaceText(_name, "'", "\\")
-		do shell script "curl -X PUT -H 'Content-Type: application/json' -d '{\"name\": \"" & _name & "\"}' " & trackerURL & "/waiting"
-	end if
+on trackJoined(_nameList)
+	my trackList(_nameList, "/joined_list")
+end trackJoined
+
+on trackWaiting(_nameList)
+	my trackList(_nameList, "/waiting_list")
 end trackWaiting
 
 on runBackendServer()
@@ -327,6 +338,10 @@ on writeToRoster(message, filePath)
 end writeToRoster
 
 on generateRoster()
+	set _joinedList to {}
+	set _waitingList to {}
+	set _joinedPrefix to "Joined "
+	set _waitingPrefix to "Waiting Room "
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
 			set allParticipantNames to get value of static text of UI element of rows
@@ -338,7 +353,9 @@ on generateRoster()
 			set _inJoinedList to false
 			repeat with i from 1 to _num
 				set _pName to item i of allParticipantNames as string
-				if _pName starts with "Waiting Room " then
+				set _pName to my replaceText(_pName, "'", "-") -- Hack for people with single-quotes in their name
+
+				if _pName starts with _waitingPrefix then
 					set _inWaitingList to true
 				end if
 				if _pName starts with "Joined " then
@@ -358,11 +375,15 @@ on generateRoster()
 				end if
 				my writeToRoster(_numPrefix & _pName, meetingRoster)
 				if _inWaitingList then
-					set _waiting to _waiting + 1
-					my trackWaiting(_pName)
+					if not (_pName starts with _waitingPrefix) then
+						set _waiting to _waiting + 1
+						set _waitingList to _waitingList & {_pName}
+					end if
 				else
-					set _joined to _joined + 1
-					my trackJoined(_pName)
+					if not (_pName starts with _joinedPrefix) then
+						set _joined to _joined + 1
+						set _joinedList to _joinedList & {_pName}
+					end if
 				end if
 			end repeat
 			if _joined > 1 then
@@ -383,6 +404,8 @@ on generateRoster()
 			my writeToRoster(_summary, meetingRoster)
 		end tell
 	end tell
+	my trackWaiting(_waitingList)
+	my trackJoined(_joinedList)
 end generateRoster
 
 on joinStringList(_strings)
