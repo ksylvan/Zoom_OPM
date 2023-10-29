@@ -46,7 +46,7 @@ property trackerURL : "http://localhost:5000"
 -- Top level commands the script understands
 property knownCommands : {Â
 	"help", "reset", "roster", "hands", "camera_off", "admit", "server", "dashboard", Â
-	"breakout", "camera_off", "camera_on"}
+	"breakout", "camera_off", "camera_on", "phone", "no_audio", "muted", "unmuted"}
 
 on usageMessage(section)
 	set tid to AppleScript's text item delimiters
@@ -60,9 +60,15 @@ on usageMessage(section)
 			& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
 			& "    reset - reset the tracking database." & linefeed & linefeed Â
 			& "    roster (default action) - get current roster." & linefeed Â
+			& linefeed Â
 			& "    hands - get the current hands raised." & linefeed Â
 			& "    camera_off - get the list of camera off participants." & linefeed Â
 			& "    camera_on - get the list of participants who are on video." & linefeed Â
+			& "    no_audio - get the list of participants not connected to audio." & linefeed Â
+			& "    muted - get the list of participants who are muted." & linefeed Â
+			& "    unmuted - get the list of participants who are unmuted." & linefeed Â
+			& "    phone - get the list of participants dialing in by phone." & linefeed Â
+			& linefeed Â
 			& "    admit - admit everyone in the Waiting Room." & linefeed Â
 			& "    breakout - create a set of named breakout rooms." & linefeed
 	else
@@ -229,7 +235,7 @@ on checkZoomMeetingRunning()
 	repeat
 		-- Make sure we are in a Zoom meeting
 		tell application "System Events" to tell process appName
-			set _startMeetingMenu to my findStatusMenu("Join Meetiing")
+			set _startMeetingMenu to my findStatusMenu("Join a Meetiing")
 			if _startMeetingMenu is not missing value then
 				display dialog "The " & scriptName & " application needs a Zoom Meeting." & linefeed & "Please join the Zoom Meeting and press OK."
 			else
@@ -365,8 +371,16 @@ on generateRoster()
 	end tell
 end generateRoster
 
+on joinStringList(_strings)
+	set _tid to AppleScript's text item delimiters
+	set AppleScript's text item delimiters to ":"
+	set _ret to _strings as string
+	set AppleScript's text item delimiters to _tid
+	return _ret
+end joinStringList
+
 on generateFilteredRoster(filterString)
-	-- Look for filterString in the description strings in participants window
+	-- Look for filter strings in the description strings in participants window
 	set _intro to "=== " & filterString & " " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_intro, handsRoster)
 	log _intro
@@ -381,7 +395,8 @@ on generateFilteredRoster(filterString)
 				set aRow to item i of allRows
 				set allElem to UI elements of (item 1 of UI element of aRow)
 				set allDescriptions to description of UI elements of (item 1 of UI element of aRow)
-				if filterString is in allDescriptions then
+				set joinedDescription to my joinStringList(allDescriptions)
+				if joinedDescription contains filterString then
 					set _num to _num + 1
 					set _msgToLog to (_num as string) & " " & pName
 					my writeToRoster(_msgToLog, handsRoster)
@@ -515,6 +530,14 @@ on run argv
 			my generateFilteredRoster("Video off")
 		else if arg is "camera_on" then
 			my generateFilteredRoster("Video on")
+		else if arg is "phone" then
+			my generateFilteredRoster("Telephone")
+		else if arg is "no_audio" then
+			my generateFilteredRoster("No Audio")
+		else if arg is "muted" then
+			my generateFilteredRoster(" muted")
+		else if arg is "unmuted" then
+			my generateFilteredRoster(" unmuted")
 		else if arg is "admit" then
 			my letPeopleIn()
 		else if arg is "breakout" then

@@ -123,14 +123,25 @@ install python3 on your Mac using [homebrew][homebrew].
 
 ### Commands
 
+Commonly used commands:
+
 - **help**: Display a usage message detailing the available commands.
 - **server**: Start the backend server. This will launch the server in its own terminal window.
 - **dashboard**: Open the Zoom Meeting Tracker dashboard in a web browser.
 - **reset**: Reset the tracking database.
 - **roster**: Generate a current list of participants in the meeting. This is the default action if no command is specified.
+
+Roster filter lists:
+
 - **hands**: Generate a list of participants who've raised their hands.
 - **camera_off**: Generate list of camera off participants.
 - **camera_on**: Generate list of participants who are on video.
+- **no_audio** - get the list of participants not connected to audio.
+- **muted** - get the list of participants who are muted.
+- **unmuted** - get the list of participants who are unmuted.
+- **phone**: List of participants dialing in by phone.
+
+Miscellaneous commands:
 
 - **admit**: Admit all attendees waiting in the Zoom waiting room.
 - **breakout**: Create a set of named breakout rooms. *This feature is a work in progress*.
