@@ -33,12 +33,15 @@ property meetingWindow : "Zoom Meeting"
 property sharingWindow : "zoom share statusbar window"
 property participantWindow : missing value
 
--- These two files are created in the logs/ subdirectory of the directory where the script is run.
--- The pattern of filenames: logs/20231014-log.txt and logs/20231014-roster.txt
+-- These three files are created in the logs/ subdirectory.
+-- The pattern of filenames: logs/20231014-log.txt
 -- This makes it easy to store and index the logs at a later time.
+-- roster.txt is the running log file capturing the roster information.
+-- log.txt is the overall log file.
+-- filtered.txt is the filtered log file (capturing "Hands Raised", etc.)
 property logFile : "log.txt"
 property meetingRoster : "roster.txt"
-property handsRoster : "hands.txt"
+property handsRoster : "filtered.txt"
 
 -- The FastAPI server should be running at this URL
 property trackerURL : "http://localhost:5000"
@@ -47,6 +50,11 @@ property trackerURL : "http://localhost:5000"
 property knownCommands : {Â
 	"help", "reset", "roster", "hands", "camera_off", "admit", "server", "dashboard", Â
 	"breakout", "camera_off", "camera_on", "phone", "no_audio", "muted", "unmuted"}
+
+-- zoomRosterDebug uses the ZOOM_DEBUG environment variable.
+-- If it is set to true, filtered rosters (like "hands") will be
+-- output to the console (stderr) in addition to going in the log.
+property zoomRosterDebug : missing value
 
 on usageMessage(section)
 	set tid to AppleScript's text item delimiters
@@ -72,7 +80,7 @@ on usageMessage(section)
 			& "    admit - admit everyone in the Waiting Room." & linefeed Â
 			& "    breakout - create a set of named breakout rooms." & linefeed
 	else
-		return linefeed & "Usage: " & (item -1 of path_parts) & " bor.txt" & linefeed Â
+		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout bor.txt" & linefeed Â
 			& "Looks for " & topLevelDirectory & "breakout/bor.txt and creates the rooms named there." & linefeed Â
 			& "Missing filename!" & linefeed
 	end if
@@ -88,8 +96,8 @@ on todayYMD()
 	return result
 end todayYMD
 
-on setUpFiles()
-	-- setUpFiles handler:
+on setUpLogFiles()
+	-- setUpLogFiles handler:
 	-- Creates a folder called "logs" in the same directory as the program if it does not already exist.
 	-- It then creates two files, logFile and meetingRoster, in the logs folder, with a prefix of the current date.
 	tell application "Finder"
@@ -104,7 +112,9 @@ on setUpFiles()
 	set logFile to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & logFile)
 	set meetingRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & meetingRoster)
 	set handsRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & handsRoster)
-end setUpFiles
+	set zoomRosterDebug to do shell script "echo ${ZOOM_DEBUG:-unset}"
+	set zoomRosterDebug to (zoomRosterDebug is not "unset") -- set to false or true
+end setUpLogFiles
 
 on formatDateTime(theDateTime)
 	(*
@@ -302,6 +312,10 @@ on writeToRoster(message, filePath)
 		write _line to _log starting at eof
 		-- Close the log file
 		close access _log
+		-- optionally log to stderr
+		if zoomRosterDebug then
+			log message
+		end if
 	on error errMsg number errNum
 		-- If an error occurs, close the log file (if it's open)
 		try
@@ -383,7 +397,6 @@ on generateFilteredRoster(filterString)
 	-- Look for filter strings in the description strings in participants window
 	set _intro to "=== " & filterString & " " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_intro, handsRoster)
-	log _intro
 	set _num to 0
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
@@ -400,7 +413,6 @@ on generateFilteredRoster(filterString)
 					set _num to _num + 1
 					set _msgToLog to (_num as string) & " " & pName
 					my writeToRoster(_msgToLog, handsRoster)
-					log _msgToLog
 				end if
 			end repeat
 		end tell
@@ -413,7 +425,6 @@ on generateFilteredRoster(filterString)
 	set _summary to "=== " & filterString & " " & (_num as string) & " participant" & plural & Â
 		" " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_summary, handsRoster)
-	log _summary
 end generateFilteredRoster
 
 on letPeopleIn()
@@ -508,7 +519,7 @@ on run argv
 		return my resetTrackigData()
 	end if
 	
-	my setUpFiles()
+	my setUpLogFiles()
 	if arg is "server" then
 		return my runBackendServer()
 	end if

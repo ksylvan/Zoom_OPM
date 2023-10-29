@@ -25,6 +25,9 @@ large Zoom meetings or seminars.
   - [Features](#features)
   - [Quick Start](#quick-start)
     - [Commands](#commands)
+      - [Commonly used commands](#commonly-used-commands)
+      - [Roster filter lists](#roster-filter-lists)
+      - [Miscellaneous commands](#miscellaneous-commands)
   - [Dependencies](#dependencies)
     - [Known Issues](#known-issues)
     - [Future Enhancements](#future-enhancements)
@@ -123,7 +126,7 @@ install python3 on your Mac using [homebrew][homebrew].
 
 ### Commands
 
-Commonly used commands:
+#### Commonly used commands
 
 - **help**: Display a usage message detailing the available commands.
 - **server**: Start the backend server. This will launch the server in its own terminal window.
@@ -131,7 +134,7 @@ Commonly used commands:
 - **reset**: Reset the tracking database.
 - **roster**: Generate a current list of participants in the meeting. This is the default action if no command is specified.
 
-Roster filter lists:
+#### Roster filter lists
 
 - **hands**: Generate a list of participants who've raised their hands.
 - **camera_off**: Generate list of camera off participants.
@@ -141,7 +144,21 @@ Roster filter lists:
 - **unmuted** - get the list of participants who are unmuted.
 - **phone**: List of participants dialing in by phone.
 
-Miscellaneous commands:
+The lists are output into the `filtered.txt` file in the logs directory. If you set
+the environment variable `ZOOM_DEBUG` then the filtered lists are also output on
+the console (stderr).
+
+```bash
+% export ZOOM_DEBUG=true
+% ./zoom-manage hands
+=== Hand raised 10/29/2023 12:30:17 ===
+1 James Tiberius Kirk
+2 Spock
+3 Leonard H McCoy
+=== Hand raised 3 participants 10/29/2023 12:30:24 ===
+```
+
+#### Miscellaneous commands
 
 - **admit**: Admit all attendees waiting in the Zoom waiting room.
 - **breakout**: Create a set of named breakout rooms. *This feature is a work in progress*.
