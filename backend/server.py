@@ -27,6 +27,7 @@ from datetime import datetime
 import sqlite3
 import shutil
 import subprocess
+from typing import List
 
 app = FastAPI()
 
@@ -89,12 +90,12 @@ def update_participant(name, status):
         conn.commit()
 
 @app.get("/waiting")
-def get_waiting_room():
+async def get_waiting_room():
     participants = get_participants('waiting')
     return {name: {'first_seen': first_seen, 'last_seen': last_seen} for name, first_seen, last_seen in participants}
 
 @app.put("/waiting")
-def update_waiting_room(name: str = Body(..., embed=True)):
+async def update_waiting_room(name: str = Body(..., embed=True)):
     update_participant(name, 'waiting')
     with sqlite3.connect(DATABASE) as conn:
         cur = conn.cursor()
@@ -102,13 +103,19 @@ def update_waiting_room(name: str = Body(..., embed=True)):
         name, first_seen, last_seen = cur.fetchone()
     return {name: {'first_seen': first_seen, 'last_seen': last_seen}}
 
+@app.put("/waiting_list")
+async def update_waiting_list(names: List[str] = Body(...)):
+    for name in names:
+        update_participant(name, 'waiting')
+    return {"message": f"Updated {len(names)} participants."}
+
 @app.get("/joined")
-def get_joined_meeting():
+async def get_joined_meeting():
     participants = get_participants('joined')
     return {name: {'first_seen': first_seen, 'last_seen': last_seen} for name, first_seen, last_seen in participants}
 
 @app.put("/joined")
-def update_joined_meeting(name: str = Body(..., embed=True)):
+async def update_joined_meeting(name: str = Body(..., embed=True)):
     update_participant(name, 'joined')
     with sqlite3.connect(DATABASE) as conn:
         cur = conn.cursor()
@@ -116,23 +123,29 @@ def update_joined_meeting(name: str = Body(..., embed=True)):
         name, first_seen, last_seen = cur.fetchone()
     return {name: {'first_seen': first_seen, 'last_seen': last_seen}}
 
+@app.put("/joined_list")
+async def update_joined_list(names: List[str] = Body(...)):
+    for name in names:
+        update_participant(name, 'joined')
+    return {"message": f"Updated {len(names)} participants."}
+
 @app.post("/reset")
-def reset_meeting():
+async def reset_meeting():
     reset_db()
     return {"message": "Database reset successfully."}
 
 @app.post("/cmd_roster")
-def execute_roster():
+async def execute_roster():
     result = subprocess.run([zoom_manage, "roster"], capture_output=True)
     return result
 
 @app.post("/cmd_hands")
-def execute_hands():
+async def execute_hands():
     result = subprocess.run([zoom_manage, "hands"], capture_output=True)
     return result
 
 @app.post("/cmd_admit")
-def execute_hands():
+async def execute_admit():
     result = subprocess.run([zoom_manage, "admit"], capture_output=True)
     return result
 
