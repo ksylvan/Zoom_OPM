@@ -95,9 +95,10 @@ install python3 on your Mac using [homebrew][homebrew].
 
 1. **Participant Roster Generation**: Generate a list of participants who've joined the Zoom meeting.
 2. **Hands Raised Tracking**: Record a list of participants who've raised their hands at any point in time during the meeting.
-3. **Waiting Room Management**: Automate the process of admitting attendees from the waiting room.
-4. **Logging**: Maintain a log of meeting activities and actions taken during the meeting.
-5. **Integrated Server and Dashboard**: Run a backend server and open a Zoom Meeting Tracker dashboard for enhanced management.
+3. **Camera Off Tracking**: Record a list of participants who have their camera turned off.
+4. **Waiting Room Management**: Automate the process of admitting attendees from the waiting room.
+5. **Logging**: Maintain a log of meeting activities and actions taken during the meeting.
+6. **Integrated Server and Dashboard**: Run a backend server and open a Zoom Meeting Tracker dashboard for enhanced management.
 
 ## Quick Start
 
@@ -128,7 +129,11 @@ install python3 on your Mac using [homebrew][homebrew].
 - **reset**: Reset the tracking database.
 - **roster**: Generate a current list of participants in the meeting. This is the default action if no command is specified.
 - **hands**: Generate a list of participants who've raised their hands.
+- **camera_off**: Generate list of camera off participants.
+- **camera_on**: Generate list of participants who are on video.
+
 - **admit**: Admit all attendees waiting in the Zoom waiting room.
+- **breakout**: Create a set of named breakout rooms. *This feature is a work in progress*.
 
 To execute a command, use the following syntax:
 

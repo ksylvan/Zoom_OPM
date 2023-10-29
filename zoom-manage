@@ -45,8 +45,8 @@ property trackerURL : "http://localhost:5000"
 
 -- Top level commands the script understands
 property knownCommands : {Â
-	"help", "reset", "roster", "hands", "admit", "server", "dashboard", Â
-	"breakout"}
+	"help", "reset", "roster", "hands", "camera_off", "admit", "server", "dashboard", Â
+	"breakout", "camera_off", "camera_on"}
 
 on usageMessage(section)
 	set tid to AppleScript's text item delimiters
@@ -59,9 +59,11 @@ on usageMessage(section)
 			& "    server - run the backend server. Starts the server in its own terminal." & linefeed Â
 			& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
 			& "    reset - reset the tracking database." & linefeed & linefeed Â
-			& "    roster (default action) - get current roster" & linefeed Â
-			& "    hands - get the current hands raised" & linefeed Â
-			& "    admit - admit everyone in the Waiting Room" & linefeed Â
+			& "    roster (default action) - get current roster." & linefeed Â
+			& "    hands - get the current hands raised." & linefeed Â
+			& "    camera_off - get the list of camera off participants." & linefeed Â
+			& "    camera_on - get the list of participants who are on video." & linefeed Â
+			& "    admit - admit everyone in the Waiting Room." & linefeed Â
 			& "    breakout - create a set of named breakout rooms." & linefeed
 	else
 		return linefeed & "Usage: " & (item -1 of path_parts) & " bor.txt" & linefeed Â
@@ -363,8 +365,9 @@ on generateRoster()
 	end tell
 end generateRoster
 
-on generateHandsRoster()
-	set _intro to "=== " & (my formatDateTime(current date)) & " ==="
+on generateFilteredRoster(filterString)
+	-- Look for filterString in the description strings in participants window
+	set _intro to "=== " & filterString & " " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_intro, handsRoster)
 	log _intro
 	set _num to 0
@@ -378,7 +381,7 @@ on generateHandsRoster()
 				set aRow to item i of allRows
 				set allElem to UI elements of (item 1 of UI element of aRow)
 				set allDescriptions to description of UI elements of (item 1 of UI element of aRow)
-				if "Hand raised" is in allDescriptions then
+				if filterString is in allDescriptions then
 					set _num to _num + 1
 					set _msgToLog to (_num as string) & " " & pName
 					my writeToRoster(_msgToLog, handsRoster)
@@ -392,11 +395,11 @@ on generateHandsRoster()
 	else
 		set plural to ""
 	end if
-	set _summary to "=== " & (_num as string) & " hand" & plural & Â
-		" raised " & (my formatDateTime(current date)) & " ==="
+	set _summary to "=== " & filterString & " " & (_num as string) & " participant" & plural & Â
+		" " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_summary, handsRoster)
 	log _summary
-end generateHandsRoster
+end generateFilteredRoster
 
 on letPeopleIn()
 	set checkForWaitingRoom to true
@@ -507,7 +510,11 @@ on run argv
 		if arg is "roster" then
 			my generateRoster()
 		else if arg is "hands" then
-			my generateHandsRoster()
+			my generateFilteredRoster("Hand raised")
+		else if arg is "camera_off" then
+			my generateFilteredRoster("Video off")
+		else if arg is "camera_on" then
+			my generateFilteredRoster("Video on")
 		else if arg is "admit" then
 			my letPeopleIn()
 		else if arg is "breakout" then
