@@ -358,7 +358,7 @@ on generateRoster()
 				if _pName starts with _waitingPrefix then
 					set _inWaitingList to true
 				end if
-				if _pName starts with "Joined " then
+				if _pName starts with _joinedPrefix then
 					set _inWaitingList to false
 					set _inJoinedList to true
 				end if
