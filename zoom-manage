@@ -304,7 +304,7 @@ end trackWaiting
 on runBackendServer()
 	tell application "Terminal"
 		activate
-		set shell to do script "cd " & topLevelDirectory & "backend; ./server.py; exit" in window 1
+		set shell to do script "cd " & topLevelDirectory & "backend; ./server.py; exit"
 	end tell
 end runBackendServer
 
