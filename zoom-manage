@@ -45,6 +45,7 @@ property handsRoster : "filtered.txt"
 
 -- The FastAPI server should be running at this URL
 property trackerURL : "http://localhost:5000"
+property batchCount : 50 -- can be set via ZOOM_MANAGE_BATCH_SIZE environment variable
 
 -- Top level commands the script understands
 property knownCommands : {Â
@@ -112,9 +113,16 @@ on setUpLogFiles()
 	set logFile to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & logFile)
 	set meetingRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & meetingRoster)
 	set handsRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & handsRoster)
+	my setupEnvVariables()
+end setUpLogFiles
+
+on setupEnvVariables()
+	-- zoomRosterDebug is false if ZOOM_DEBUG is not set
 	set zoomRosterDebug to do shell script "echo ${ZOOM_DEBUG:-unset}"
 	set zoomRosterDebug to (zoomRosterDebug is not "unset") -- set to false or true
-end setUpLogFiles
+	-- batchCount is set to value of ZOOM_MANAGER_BATCH_SIZE (50 if not set)
+	set batchCount to do shell script "echo ${ZOOM_MANAGE_BATCH_SIZE:-" & batchCount & "}"
+end setupEnvVariables
 
 on formatDateTime(theDateTime)
 	(*
@@ -293,12 +301,21 @@ on trackList(_nameList, apiEndpoint)
 	-- log cmd
 end trackJoined
 
+on trackListBatched(_nameList, apiEndpoint)
+	set _nameCount to count _nameList
+	repeat with i from 1 to _nameCount by batchCount
+		set endIndex to i + batchCount - 1
+        if endIndex > _nameCount then set endIndex to _nameCount
+		my trackList(items i thru endIndex of _nameList, apiEndpoint)
+	end repeat
+end trackListBatched
+
 on trackJoined(_nameList)
-	my trackList(_nameList, "/joined_list")
+	my trackListBatched(_nameList, "/joined_list")
 end trackJoined
 
 on trackWaiting(_nameList)
-	my trackList(_nameList, "/waiting_list")
+	my trackListBatched(_nameList, "/waiting_list")
 end trackWaiting
 
 on runBackendServer()
