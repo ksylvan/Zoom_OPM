@@ -21,13 +21,16 @@
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  """
 
-from fastapi import FastAPI, HTTPException, Body
-from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
-import sqlite3
 import shutil
+import sqlite3
 import subprocess
+from datetime import datetime
+from sys import version as python_version
 from typing import List
+
+from fastapi import Body, FastAPI, HTTPException
+from fastapi import __version__ as fastapi_version
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
@@ -88,6 +91,15 @@ def update_participant(name, status):
         else:
             cur.execute('INSERT INTO participants (name, status, first_seen, last_seen) VALUES (?, ?, ?, ?)', (name, status, current_time, current_time))
         conn.commit()
+
+@app.get("/health")
+async def read_health():
+    current_datetime = datetime.now().strftime('%Y%m%d-%H%M%S')
+    return {
+        "python_version": python_version,
+        "fastapi_version": fastapi_version,
+        "current_datetime": current_datetime
+    }
 
 @app.get("/waiting")
 def get_waiting_room():

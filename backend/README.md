@@ -122,6 +122,12 @@ before resetting the database.
 - **Method**: `POST`
 - **Response**: Run the `zoom-manager admit` command.
 
+### 10. Read Health
+
+- **URL**: `/health`
+- **Method**: `GET`
+- **Response**: Returns a JSON object containing python version, fastpai version, and the current datetime.
+
 ## License
 
 This software is provided under the MIT License. See the provided [LICENSE](../LICENSE) file for details.

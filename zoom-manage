@@ -319,9 +319,26 @@ on trackWaiting(_nameList)
 end trackWaiting
 
 on runBackendServer()
+	-- check if the server is already running
+	set serverRunning to false
+	try
+		set jsonOutput  to do shell script "curl -X GET " & trackerURL & "/health -H 'accept: application/json'"
+		if jsonOutput starts with "{" then set serverRunning to true
+	on error errMessage number errNUm
+		error errMessage number errNum
+	end try
+	if serverRunning then
+		error "Server is already running. " & jsonOutput number -1
+	end if
+	set titleString to "\\033]0;" & scriptName & " Backend Server\\007"
+	set cmd to "echo -n -e \"" & titleString & "\";cd " & topLevelDirectory & "backend; ./server.py; exit"
 	tell application "Terminal"
 		activate
-		set shell to do script "cd " & topLevelDirectory & "backend; ./server.py; exit"
+		if (count of windows) is 0 then
+            do script cmd
+        else
+            do script cmd in window 1
+        end if
 	end tell
 end runBackendServer
 
