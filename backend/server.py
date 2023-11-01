@@ -21,6 +21,7 @@
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  """
 
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -54,7 +55,19 @@ def init_db():
                 status TEXT NOT NULL,
                 first_seen TEXT NOT NULL,
                 last_seen TEXT NOT NULL,
-                PRIMARY KEY (name, status)
+                host BOOLEAN DEFAULT 0,
+                co_host BOOLEAN DEFAULT 0,
+                PRIMARY KEY (name, status),
+                CHECK ((host = 1 AND co_host = 0) OR (host = 0 AND co_host = 1) OR (host = 0 AND co_host = 0))
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                old_role TEXT,
+                new_role TEXT
             )
         ''')
 
@@ -82,15 +95,42 @@ def get_participants(status):
         return cur.fetchall()
 
 def update_participant(name, status):
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    match = re.match(r'^(.*?)\s+\(([^)]+)\)$', name)
+    host, co_host = False, False
+
+    if match:
+        name, roles = match.groups()
+        host = 'Host' in roles
+        co_host = 'co-host' in roles.lower()
+
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S') 
     with sqlite3.connect(DATABASE) as conn:
         cur = conn.cursor()
-        cur.execute('SELECT name FROM participants WHERE name = ? AND status = ?', (name, status))
-        if cur.fetchone():
-            cur.execute('UPDATE participants SET last_seen = ? WHERE name = ? AND status = ?', (current_time, name, status))
+        cur.execute('SELECT name, host, co_host, first_seen FROM participants WHERE name = ? AND status = ?', (name, status))
+        existing_participant = cur.fetchone()
+        # If the participant already exists, check for a change in the host or co-host status
+        if existing_participant:
+            _, old_host, old_co_host, first_seen = existing_participant
+            if old_host != host or old_co_host != co_host:
+                # Determine the old and new roles
+                old_role = 'Host' if old_host else 'Co-host' if old_co_host else 'Participant'
+                new_role = 'Host' if host else 'Co-host' if co_host else 'Participant'
+                # Log the role change event
+                cur.execute(
+                    'INSERT INTO events (name, timestamp, old_role, new_role) VALUES (?, ?, ?, ?)',
+                    (name, current_time, old_role, new_role)
+                )
+            cur.execute(
+                'UPDATE participants SET last_seen = ?, host = ?, co_host = ? WHERE name = ? AND status = ?',
+                (current_time, host, co_host, name, status)
+            )
         else:
-            cur.execute('INSERT INTO participants (name, status, first_seen, last_seen) VALUES (?, ?, ?, ?)', (name, status, current_time, current_time))
+            cur.execute(
+                'INSERT INTO participants (name, status, first_seen, last_seen, host, co_host) VALUES (?, ?, ?, ?, ?, ?)',
+                (name, status, current_time, current_time, host, co_host)
+            )
         conn.commit()
+        return (name, first_seen, current_time)
 
 @app.get("/health")
 async def read_health():
@@ -108,11 +148,7 @@ def get_waiting_room():
 
 @app.put("/waiting")
 def update_waiting_room(name: str = Body(..., embed=True)):
-    update_participant(name, 'waiting')
-    with sqlite3.connect(DATABASE) as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT name, first_seen, last_seen FROM participants WHERE name = ? AND status = ?', (name, 'waiting'))
-        name, first_seen, last_seen = cur.fetchone()
+    name, first_seen, last_seen = update_participant(name, 'waiting')
     return {name: {'first_seen': first_seen, 'last_seen': last_seen}}
 
 @app.put("/waiting_list")
@@ -128,11 +164,7 @@ def get_joined_meeting():
 
 @app.put("/joined")
 def update_joined_meeting(name: str = Body(..., embed=True)):
-    update_participant(name, 'joined')
-    with sqlite3.connect(DATABASE) as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT name, first_seen, last_seen FROM participants WHERE name = ? AND status = ?', (name, 'joined'))
-        name, first_seen, last_seen = cur.fetchone()
+    name, first_seen, last_seen = update_participant(name, 'joined')
     return {name: {'first_seen': first_seen, 'last_seen': last_seen}}
 
 @app.put("/joined_list")
@@ -165,4 +197,3 @@ if __name__ == "__main__":
     init_db()  # Initialize the database
     import uvicorn
     uvicorn.run(app, host="localhost", port=5000)
-
