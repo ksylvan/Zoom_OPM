@@ -299,13 +299,13 @@ on trackList(_nameList, apiEndpoint)
 	set AppleScript's text item delimiters to _tid
 	do shell script cmd
 	-- log cmd
-end trackJoined
+end trackList
 
 on trackListBatched(_nameList, apiEndpoint)
 	set _nameCount to count _nameList
 	repeat with i from 1 to _nameCount by batchCount
 		set endIndex to i + batchCount - 1
-        if endIndex > _nameCount then set endIndex to _nameCount
+		if endIndex > _nameCount then set endIndex to _nameCount
 		my trackList(items i thru endIndex of _nameList, apiEndpoint)
 	end repeat
 end trackListBatched
@@ -322,9 +322,9 @@ on runBackendServer()
 	-- check if the server is already running
 	set serverRunning to false
 	try
-		set jsonOutput  to do shell script "curl -X GET " & trackerURL & "/health -H 'accept: application/json'"
+		set jsonOutput to do shell script "curl -X GET " & trackerURL & "/health -H 'accept: application/json'"
 		if jsonOutput starts with "{" then set serverRunning to true
-	on error errMessage number errNUm
+	on error errMessage number errNum
 		error errMessage number errNum
 	end try
 	if serverRunning then
@@ -335,10 +335,10 @@ on runBackendServer()
 	tell application "Terminal"
 		activate
 		if (count of windows) is 0 then
-            do script cmd
-        else
-            do script cmd in window 1
-        end if
+			do script cmd
+		else
+			do script cmd in window 1
+		end if
 	end tell
 end runBackendServer
 
@@ -522,6 +522,18 @@ on letPeopleIn()
 	end repeat
 end letPeopleIn
 
+on clickSubElement(targetWin, searchString)
+	tell application "System Events" to tell process appName
+		set elems to every UI element of targetWin
+		repeat with e in elems
+			if description of e is searchString as text then
+				click e
+				exit repeat
+			end if
+		end repeat
+	end tell
+end clickSubElement
+
 on createBreakoutRooms(breakoutFilename)
 	set borFilePath to topLevelDirectory & "breakout/" & breakoutFilename
 	tell application "System Events"
@@ -559,8 +571,42 @@ on createBreakoutRooms(breakoutFilename)
 	if name of _borWin contains "In Progress" then
 		return "Breakout rooms already started. Please close them first."
 	else
-		-- TODO - Here we should create the rooms
+		tell application "System Events" to tell process appName
+			if exists text field 1 of _borWin then
+				click _borWin
+				click text field 1 of _borWin
+				delay 1.0
+				keystroke "	" & roomCount
+				delay 1.0
+				my clickSubElement(_borWin, "Create")
+			else
+				my clickSubElement(_borWin, "Recreate")
+				delay 1.0
+				keystroke "	" & roomCount
+				delay 1.0
+				set w to window "All existing rooms will be replaced."
+				my clickSubElement(w, "Recreate")
+			end if
+		end tell
 	end if
+
+	-- Now, with the right number of rooms, we can rename them all.
+	-- We can use the _borWin window handle we already have.
+	tell application "System Events" to tell process appName to tell _borWin
+		tell table 1 of scroll area 1 of group 1
+			set _rows to rows
+			set i to 0
+			repeat with _r in _rows
+				set i to i + 1
+				click UI element 2 of UI element 1 of _r
+				delay 0.3
+				keystroke item i of rooms
+				delay 0.5
+				keystroke "\r"
+				delay 0.5
+			end repeat
+		end tell
+	end tell
 end createBreakoutRooms
 
 on run argv
