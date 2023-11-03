@@ -95,7 +95,6 @@ def get_participants(status):
         return cur.fetchall()
 
 def update_participant(name, status):
-    print(name)
     match = re.match(r'^(.*?)\s+\(([^)]+)\)$', name)
     host, co_host = False, False
 
