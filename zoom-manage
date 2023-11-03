@@ -371,6 +371,17 @@ on writeToRoster(message, filePath)
 	end try
 end writeToRoster
 
+on writeToRosterPart(namesList, spacesPrefix)
+	-- Write a list of names to the roster.txt file
+	-- prepend each with the spacesPrefix
+	if (count namesList) is 0 then return
+	set i to 1
+	repeat with n in namesList
+		my writeToRoster(spacesPrefix & i & ". " & n, meetingRoster)
+		set i to i + 1
+	end repeat
+end writeToRosterPart
+
 on generateRoster()
 	set _joinedList to {}
 	set _waitingList to {}
@@ -379,16 +390,12 @@ on generateRoster()
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
 			set allParticipantNames to get value of static text of UI element of rows
-			set _intro to "=== " & (my formatDateTime(current date)) & " ==="
-			my writeToRoster(_intro, meetingRoster)
-			set [_waiting, _joined] to [0, 0] -- The number in Waiting Room and the numner Joined
 			set _num to (count allParticipantNames)
 			set _inWaitingList to false
 			set _inJoinedList to false
 			repeat with i from 1 to _num
 				set _pName to item i of allParticipantNames as string
 				set _pName to my replaceText(_pName, "'", "-") -- Hack for people with single-quotes in their name
-
 				if _pName starts with _waitingPrefix then
 					set _inWaitingList to true
 				end if
@@ -397,47 +404,44 @@ on generateRoster()
 					set _inJoinedList to true
 				end if
 				if (i is 1) and (not _inWaitingList) and (not _inJoinedList) then
-					set _inJoinedList to true
-					set _joined to 1
+					set _joinedList to allParticipantNames
+					exit repeat
 				end if
-				set _numPrefix to ""
-				if _inWaitingList and (_waiting > 0) then
-					set _numPrefix to " " & (_waiting as string) & ". "
-				end if
-				if (not _inWaitingList) and (_joined > 0) then
-					set _numPrefix to " " & (_joined as string) & ". "
-				end if
-				my writeToRoster(_numPrefix & _pName, meetingRoster)
 				if _inWaitingList then
 					if not (_pName starts with _waitingPrefix) then
-						set _waiting to _waiting + 1
 						set _waitingList to _waitingList & {_pName}
 					end if
 				else
 					if not (_pName starts with _joinedPrefix) then
-						set _joined to _joined + 1
 						set _joinedList to _joinedList & {_pName}
 					end if
 				end if
 			end repeat
-			if _joined > 1 then
-				set _joined to _joined - 1
-			end if
-			if _waiting > 1 then
-				set _waiting to _waiting - 1
-			end if
-			
-			set _sum to _joined + _waiting
-			if _sum > 1 then
-				set plural to "s"
-			else
-				set plural to ""
-			end if
-			set _summary to "=== " & (_sum as string) & " participant" & plural Â
-				& " " & (my formatDateTime(current date)) & " ==="
-			my writeToRoster(_summary, meetingRoster)
 		end tell
 	end tell
+
+	set _intro to "=== " & (my formatDateTime(current date)) & " ==="
+	my writeToRoster(_intro, meetingRoster)
+
+	if (count _waitingList) > 0 then
+		my writeToRoster("Waiting Room:", meetingRoster)
+		my writeToRosterPart(_waitingList, "  ")
+		my writeToRoster("Joined:", meetingRoster)
+		my writeToRosterPart(_joinedList, "  ")
+	else
+		my writeToRosterPart(_joinedList, "")
+	end if
+
+	set _num to (count _waitingList) + (count _joinedList)
+	if _num > 1 then
+		set plural to "s"
+	else
+		set plural to ""
+	end if
+	set _summary to "=== " & (_num as string) & " participant" & plural Â
+		& " " & (my formatDateTime(current date)) & " ==="
+	my writeToRoster(_summary, meetingRoster)
+
 	my trackWaiting(_waitingList)
 	my trackJoined(_joinedList)
 end generateRoster
@@ -468,7 +472,7 @@ on generateFilteredRoster(filterString)
 				set joinedDescription to my joinStringList(allDescriptions)
 				if joinedDescription contains filterString then
 					set _num to _num + 1
-					set _msgToLog to (_num as string) & " " & pName
+					set _msgToLog to (_num as string) & ". " & pName
 					my writeToRoster(_msgToLog, handsRoster)
 				end if
 			end repeat
@@ -484,47 +488,22 @@ on generateFilteredRoster(filterString)
 	my writeToRoster(_summary, handsRoster)
 end generateFilteredRoster
 
-on letPeopleIn()
-	set checkForWaitingRoom to true
-	repeat while checkForWaitingRoom
-		tell application "System Events" to tell process appName
-			tell outline 1 of scroll area 1 of participantWindow
-				-- Fetch all the rows in the Participants list.
-				set participantRows to every row
-				-- Check to see if Waiting Room exists.
-				set firstRowName to (get value of static text of UI element of row 1) as string
-				if firstRowName does not start with "Waiting Room " then
-					exit repeat
-				end if
-				set checkForWaitingRoom to false
-				-- Loop through each participant row and click the "Admit" button.
-				repeat with aRow in participantRows
-					if checkForWaitingRoom then
-						exit repeat
-					end if
-					set pName to (get value of static text of UI element of aRow) as string
-					if pName starts with "Joined " then
-						exit repeat
-					end if
-					set allElem to UI elements of (item 1 of UI element of aRow)
-					repeat with anElem in allElem
-						if description of anElem is "Admit" then
-							click anElem
-							delay 1
-							set checkForWaitingRoom to true
-							my logMessage("Waiting Room: Admitted " & pName, logFile)
-							exit repeat
-						end if
-					end repeat
-				end repeat
-			end tell
-		end tell
-	end repeat
-end letPeopleIn
+on howManyWaiting(waitingRoomText)
+	-- Take a string like "Waiting Room (3)" and return the number in the parentheses
+	set {TID, AppleScript's text item delimiters} to {AppleScript's text item delimiters, "("}
+	set thePart to text item 2 of waitingRoomText
+	set AppleScript's text item delimiters to ")"
+	set theValue to text item 1 of thePart
+	set AppleScript's text item delimiters to TID -- restore original text item delimiters
+	return theValue as integer
+end howManyWaiting
 
-on clickSubElement(targetWin, searchString)
+on clickSubElement(target, searchString)
+	-- Search for a button by description that is a
+	-- sub element of the target. This works for windows, or
+	-- other UI elements (outlines, scroll areas, etc.)
 	tell application "System Events" to tell process appName
-		set elems to every UI element of targetWin
+		set elems to every UI element of target
 		repeat with e in elems
 			if description of e is searchString as text then
 				click e
@@ -533,6 +512,46 @@ on clickSubElement(targetWin, searchString)
 		end repeat
 	end tell
 end clickSubElement
+
+on letPeopleIn()
+	tell application "System Events" to tell process appName
+		tell outline 1 of scroll area 1 of participantWindow
+			-- Fetch all the rows in the Participants list.
+			set participantRows to every row
+			-- Check to see if Waiting Room exists.
+			set firstRowName to (get value of static text of UI element of row 1) as string
+			if firstRowName does not start with "Waiting Room " then
+				return -- Nothing to do here
+			end if
+			set allParticipantNames to get value of static text of UI element of rows
+			set _waitingNumber to my howManyWaiting(firstRowName)
+			if _waitingNumber > 1 then
+				-- We will find and click the "Admit All" button.
+				my clickSubElement(item 1 of UI element of row 1, "Admit All")
+			else
+				-- We will click the Admit button on row 2 (the participant)
+				my clickSubElement(item 1 of UI element of row 2, "Admit")
+			end if
+			delay 1
+			-- Now, we log all the people we admitted.
+			-- First, gather the list of people.
+			set myList to {}
+			repeat with _name in allParticipantNames
+				set _name to _name as text
+				if _name starts with "Joined " then
+					exit repeat
+				else
+					if not (_name starts with "Waiting Room ") then
+						set myList to myList & {_name}
+						my logMessage("Waiting Room: Admitted " & _name, logFile)
+					end if
+				end if
+			end repeat
+			log myList
+			my trackListBatched(myList, "/waiting_list")
+		end tell
+	end tell
+end letPeopleIn
 
 on createBreakoutRooms(breakoutFilename)
 	set borFilePath to topLevelDirectory & "breakout/" & breakoutFilename
