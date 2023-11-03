@@ -95,6 +95,7 @@ def get_participants(status):
         return cur.fetchall()
 
 def update_participant(name, status):
+    print(name)
     match = re.match(r'^(.*?)\s+\(([^)]+)\)$', name)
     host, co_host = False, False
 
@@ -125,6 +126,7 @@ def update_participant(name, status):
                 (current_time, host, co_host, name, status)
             )
         else:
+            first_seen = current_time
             cur.execute(
                 'INSERT INTO participants (name, status, first_seen, last_seen, host, co_host) VALUES (?, ?, ?, ?, ?, ?)',
                 (name, status, current_time, current_time, host, co_host)
