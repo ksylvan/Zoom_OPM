@@ -41,7 +41,7 @@ property participantWindow : missing value
 -- filtered.txt is the filtered log file (capturing "Hands Raised", etc.)
 property logFile : "log.txt"
 property meetingRoster : "roster.txt"
-property handsRoster : "filtered.txt"
+property filteredRoster : "filtered.txt"
 
 -- The FastAPI server should be running at this URL
 property trackerURL : "http://localhost:5000"
@@ -112,7 +112,7 @@ on setUpLogFiles()
 	set topLevelDirectory to _currentDirectory
 	set logFile to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & logFile)
 	set meetingRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & meetingRoster)
-	set handsRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & handsRoster)
+	set filteredRoster to POSIX file (topLevelDirectory & "logs/" & _prefix & "-" & filteredRoster)
 	my setupEnvVariables()
 end setUpLogFiles
 
@@ -272,6 +272,7 @@ on resetTrackigData()
 end resetTrackigData
 
 on replaceText(theText, searchStr, replacementStr)
+	set theText to theText as text
 	if theText does not contain searchStr then
 		return theText -- return the original string if it doesn't contain the search string
 	end if
@@ -288,9 +289,14 @@ on trackList(_nameList, apiEndpoint)
 	if (count _nameList) is 0 then
 		return
 	end if
+	set _sanitized to {}
+	repeat with _p in _nameList
+		set _p to my replaceText(_p, "'", "-") -- Hack for people with single-quotes in their name
+		set _sanitized to _sanitized & {_p}
+	end repeat
 	set cmd to "curl -X PUT -H 'Content-Type: application/json' -d ' ["
 	set qList to {}
-	repeat with n in _nameList
+	repeat with n in _sanitized
 		set qList to qList & {"\"" & n & "\""}
 	end repeat
 	set _tid to AppleScript's text item delimiters
@@ -395,7 +401,6 @@ on generateRoster()
 			set _inJoinedList to false
 			repeat with i from 1 to _num
 				set _pName to item i of allParticipantNames as string
-				set _pName to my replaceText(_pName, "'", "-") -- Hack for people with single-quotes in their name
 				if _pName starts with _waitingPrefix then
 					set _inWaitingList to true
 				end if
@@ -457,7 +462,7 @@ end joinStringList
 on generateFilteredRoster(filterString)
 	-- Look for filter strings in the description strings in participants window
 	set _intro to "=== " & filterString & " " & (my formatDateTime(current date)) & " ==="
-	my writeToRoster(_intro, handsRoster)
+	my writeToRoster(_intro, filteredRoster)
 	set _num to 0
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
@@ -473,7 +478,7 @@ on generateFilteredRoster(filterString)
 				if joinedDescription contains filterString then
 					set _num to _num + 1
 					set _msgToLog to (_num as string) & ". " & pName
-					my writeToRoster(_msgToLog, handsRoster)
+					my writeToRoster(_msgToLog, filteredRoster)
 				end if
 			end repeat
 		end tell
@@ -485,7 +490,7 @@ on generateFilteredRoster(filterString)
 	end if
 	set _summary to "=== " & filterString & " " & (_num as string) & " participant" & plural & Â
 		" " & (my formatDateTime(current date)) & " ==="
-	my writeToRoster(_summary, handsRoster)
+	my writeToRoster(_summary, filteredRoster)
 end generateFilteredRoster
 
 on howManyWaiting(waitingRoomText)
@@ -547,7 +552,6 @@ on letPeopleIn()
 					end if
 				end if
 			end repeat
-			log myList
 			my trackListBatched(myList, "/waiting_list")
 		end tell
 	end tell
