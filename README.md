@@ -105,8 +105,15 @@ install python3 on your Mac using [homebrew][homebrew].
 
 ## Quick Start
 
+Clone this repository and ensure you can get the backend API server running.
+
+```bash
+git clone https://github.com/ksylvan/Zoom_OPM
+```
+
 1. Ensure that the Zoom application is running and that you're in a Zoom
    meeting.
+
 2. Execute the `zoom-manage` script, to run the backend server.
 
    ```bash
