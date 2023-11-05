@@ -168,7 +168,7 @@ the console (stderr).
 #### Miscellaneous commands
 
 - **admit**: Admit all attendees waiting in the Zoom waiting room.
-- **breakout**: Create a set of named breakout rooms. *This feature is a work in progress*.
+- **breakout**: Create a set of named breakout rooms.
 
 To execute a command, use the following syntax:
 

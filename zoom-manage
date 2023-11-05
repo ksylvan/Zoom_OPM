@@ -81,8 +81,8 @@ on usageMessage(section)
 			& "    admit - admit everyone in the Waiting Room." & linefeed Â
 			& "    breakout - create a set of named breakout rooms." & linefeed
 	else
-		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout bor.txt" & linefeed Â
-			& "Looks for " & topLevelDirectory & "breakout/bor.txt and creates the rooms named there." & linefeed Â
+		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout filename" & linefeed Â
+			& "Opens up the named file and creates the rooms named there." & linefeed Â
 			& "Missing filename!" & linefeed
 	end if
 end usageMessage
@@ -558,7 +558,11 @@ on letPeopleIn()
 end letPeopleIn
 
 on createBreakoutRooms(breakoutFilename)
-	set borFilePath to topLevelDirectory & "breakout/" & breakoutFilename
+	if breakoutFilename starts with "/" then
+		set borFilePath to breakoutFilename
+	else
+		set borFilePath to topLevelDirectory & breakoutFilename
+	end if
 	tell application "System Events"
 		if (not (exists file borFilePath)) then
 			error ("Missing breakout file: " & borFilePath) number -1
@@ -598,15 +602,15 @@ on createBreakoutRooms(breakoutFilename)
 			if exists text field 1 of _borWin then
 				click _borWin
 				click text field 1 of _borWin
-				delay 1.0
+				delay 0.5
 				keystroke "	" & roomCount
-				delay 1.0
+				delay 0.5
 				my clickSubElement(_borWin, "Create")
 			else
 				my clickSubElement(_borWin, "Recreate")
-				delay 1.0
+				delay 0.5
 				keystroke "	" & roomCount
-				delay 1.0
+				delay 0.5
 				set w to window "All existing rooms will be replaced."
 				my clickSubElement(w, "Recreate")
 			end if
@@ -622,11 +626,11 @@ on createBreakoutRooms(breakoutFilename)
 			repeat with _r in _rows
 				set i to i + 1
 				click UI element 2 of UI element 1 of _r
-				delay 0.3
+				delay 0.2
 				keystroke item i of rooms
-				delay 0.5
+				delay 0.2
 				keystroke "\r"
-				delay 0.5
+				delay 0.2
 			end repeat
 		end tell
 	end tell
