@@ -605,12 +605,13 @@ on createBreakoutRooms(breakoutFilename)
 		return "Breakout rooms already started. Please close them first."
 	else
 		tell application "System Events" to tell process appName
+			click _borWin
 			if exists text field 1 of _borWin then
-				click _borWin
 				click text field 1 of _borWin
 				delay 0.5
 				keystroke "	" & roomCount
 				delay 0.5
+				my clickSubElement(_borWin, "Assign manually")
 				my clickSubElement(_borWin, "Create")
 			else
 				my clickSubElement(_borWin, "Recreate")
@@ -618,6 +619,7 @@ on createBreakoutRooms(breakoutFilename)
 				keystroke "	" & roomCount
 				delay 0.5
 				set w to window "All existing rooms will be replaced."
+				my clickSubElement(w, "Assign manually")
 				my clickSubElement(w, "Recreate")
 			end if
 		end tell

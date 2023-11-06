@@ -26,3 +26,9 @@ Then invoke the `zoom-manager` application like this:
 ```bash
 ./zoom-manage breakout create breakout/seminar-start.txt
 ```
+
+NOTE: The `zoom-manager breakout create` command will set the
+`Assign manually` option. Once the rooms are created, it is
+recommended that you open and close the rooms immediately. This
+is due to a bug, where if you click on the `Breakout Room` Zoom
+Status menu, it will lose some of your room setup.
