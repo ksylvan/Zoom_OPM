@@ -81,9 +81,10 @@ on usageMessage(section)
 			& "    admit - admit everyone in the Waiting Room." & linefeed Â
 			& "    breakout - create a set of named breakout rooms." & linefeed
 	else
-		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout filename" & linefeed Â
-			& "Opens up the named file and creates the rooms named there." & linefeed Â
-			& "Missing filename!" & linefeed
+		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout [create | get | help] filename" & linefeed Â
+			& "    help - print the breakout related help message." & linefeed Â
+			& "    create - Opens up the named file and creates the rooms named there." & linefeed Â
+			& "    get - Get the named rooms and write them into filename." & linefeed
 	end if
 end usageMessage
 
@@ -141,6 +142,12 @@ on formatDateTime(theDateTime)
 	return result
 end formatDateTime
 
+on appendToFile(theFile, message, logToConsole)
+	-- Write the message to theFile. logToConsole is a boolean indicating whether to log to console.
+	write message & linefeed to theFile starting at eof
+	if logToConsole then log message
+end appendToFile
+
 on logMessage(message, filePath)
 	-- Usage:
 	-- set logFilePath to (path to desktop as string) & "logfile.txt" -- Path to the log file
@@ -150,10 +157,10 @@ on logMessage(message, filePath)
 		set _log to open for access file filePath with write permission
 		
 		-- Construct the log entry
-		set logEntry to (my formatDateTime(current date)) & " " & message & linefeed
+		set logEntry to (my formatDateTime(current date)) & " " & message
 		
 		-- Write the log entry to the file
-		write logEntry to _log starting at eof
+		my appendToFile(_log, logEntry, false)
 		
 		-- Close the log file
 		close access _log
@@ -164,7 +171,9 @@ on logMessage(message, filePath)
 			close access _log
 		end try
 		-- Optionally, report the error in some way
-		display dialog "Error: " & errMsg & " (" & errNum & ")"
+		set _msg to "Error: " & errMsg & " (" & errNum & ")"
+		log _msg
+		display dialog _msg
 	end try
 end logMessage
 
@@ -359,21 +368,18 @@ on writeToRoster(message, filePath)
 	try
 		-- Open the log file for writing, creating it if it doesn't exist
 		set _log to open for access file filePath with write permission
-		set _line to message & linefeed
-		write _line to _log starting at eof
+		my appendToFile(_log, message, zoomRosterDebug)
 		-- Close the log file
 		close access _log
-		-- optionally log to stderr
-		if zoomRosterDebug then
-			log message
-		end if
 	on error errMsg number errNum
 		-- If an error occurs, close the log file (if it's open)
 		try
 			close access _log
 		end try
 		-- Optionally, report the error in some way
-		display dialog "Error: " & errMsg & " (" & errNum & ")"
+		set _msg to "Error: " & errMsg & " (" & errNum & ")"
+		log _msg
+		display dialog _msg
 	end try
 end writeToRoster
 
@@ -636,6 +642,51 @@ on createBreakoutRooms(breakoutFilename)
 	end tell
 end createBreakoutRooms
 
+on getBreakoutRooms(breakoutFilename)
+	if breakoutFilename starts with "/" then
+		set borFilePath to breakoutFilename
+	else
+		set borFilePath to topLevelDirectory & breakoutFilename
+	end if
+
+	tell application "System Events"
+		if (exists file borFilePath) then
+			error ("Will not overwrite file: " & borFilePath) number -3
+		end if
+	end tell
+
+	set bFile to POSIX file (borFilePath)
+	set _file to open for access file bFile with write permission
+
+	my clickStatusMenu("Breakout")
+	set _borWin to my findSubWindow(appName, "Breakout")
+	set _title to (name of _borWin)
+	set logEntry to "# === " & (my formatDateTime(current date)) & " " & _title
+	my appendToFile(_file, logEntry, zoomRosterDebug)
+
+	tell application "System Events" to tell process appName to tell _borWin
+		tell table 1 of scroll area 1 of group 1
+			set rooms to description of UI element 1 of UI element 1 of rows
+		end tell
+	end tell
+	repeat with eachRoom in rooms
+		my appendToFile(_file, eachRoom as text, zoomRosterDebug)
+	end repeat
+	close access _file
+end getBreakoutRooms
+
+on doBreakoutRooms(borCommand, filename)
+	if borCommand is "create" then
+		my createBreakoutRooms(filename)
+		return
+	end if
+	if borCommand is "get" then
+		my getBreakoutRooms(filename)
+		return
+	end if
+	return my usageMessage("breakout")
+end doBreakoutRooms
+
 on run argv
 	set argCount to (count argv)
 	if (argCount > 0) then
@@ -682,10 +733,10 @@ on run argv
 		else if arg is "admit" then
 			my letPeopleIn()
 		else if arg is "breakout" then
-			if argCount is not 2 then
+			if argCount is not 3 then
 				return my usageMessage("breakout")
 			end if
-			return my createBreakoutRooms(item 2 of argv)
+			return my doBreakoutRooms(item 2 of argv, item 3 of argv)
 		end if
 	on error errMsg number errNum
 		set e_str to "Error: " & errMsg

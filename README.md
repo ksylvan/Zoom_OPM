@@ -168,7 +168,9 @@ the console (stderr).
 #### Miscellaneous commands
 
 - **admit**: Admit all attendees waiting in the Zoom waiting room.
-- **breakout**: Create a set of named breakout rooms.
+- **breakout**: Manage creating breakout rooms.
+  Run `./zoom-manage breakout help` for details and see [this documentation][breakout-readme]
+  for the format of the breakout room files.
 
 To execute a command, use the following syntax:
 
@@ -224,3 +226,4 @@ This work is Copyright (c) 2023, [Kayvan A. Sylvan][linkedin] and is released un
 [windows]: docs/Windows.md
 [zoom-manage-scrip]: ./zoom-manage
 [zoom-opm-tools-logo]: ./frontend/zoom-opm-tools.png
+[breakout-readme]: ./breakout/README.md

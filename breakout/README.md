@@ -24,5 +24,5 @@ Seminar Leader Room 2
 Then invoke the `zoom-manager` application like this:
 
 ```bash
-zoom-manage breakout seminar-start.txt
+./zoom-manage breakout create breakout/seminar-start.txt
 ```
