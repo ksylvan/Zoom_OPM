@@ -616,7 +616,13 @@ on createBreakoutRooms(breakoutFilename)
 			else
 				my clickSubElement(_borWin, "Recreate")
 				delay 0.5
-				keystroke "	" & roomCount
+				set _menuWinName to "Menu window"
+				if exists window _menuWinName then
+					key code 125
+					key code 125
+					keystroke " "
+				end if
+				keystroke "\t" & roomCount
 				delay 0.5
 				set w to window "All existing rooms will be replaced."
 				my clickSubElement(w, "Assign manually")
