@@ -186,6 +186,7 @@ on checkZoomRunning()
 	end tell
 	if not _isRunning then
 		tell application appName to activate
+		delay 1.0
 	end if
 	set appVersion to version of application appName
 end checkZoomRunning

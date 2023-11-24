@@ -88,7 +88,7 @@ This is an AppleScript application built to run natively on macOS, making it
 compatible with most macOS versions spanning from the older releases to the latest.
 
 It has been tested on macOS Sonoma (14.0) on an Apple M2 MacBook Air, running
-Zoom version 5.16.2 (23409).
+Zoom version 5.16.6 (24664).
 
 The backend component is a [FastAPI][fastapi] server written in Python3 that
 serves the "Zoom Meeting Tracker" frontend written with JavaScript. You can
