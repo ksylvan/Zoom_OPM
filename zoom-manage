@@ -207,12 +207,15 @@ on findStatusMenu(nameSubstring)
 end findStatusMenu
 
 on clickStatusMenu(nameSubstring)
-	-- Click a menu item in status menu
+	-- Click a menu item in status menu. Returns true if done, false otherwise.
 	tell application "System Events" to tell process appName
 		set m to my findStatusMenu(nameSubstring)
-		click m
-		delay 1
+		if m is not missing value then
+			click m
+			delay 1
+		end if
 	end tell
+	return (m is not missing value)
 end clickStatusMenu
 
 on enableParticipantsWindow()
@@ -600,7 +603,10 @@ on createBreakoutRooms(breakoutFilename)
 		return "No rooms are defined in the file " & borFilePath & " - exiting."
 	end if
 	
-	my clickStatusMenu("Breakout")
+	set bor_clicked to my clickStatusMenu("Breakout")
+	if not bor_clicked then
+		return "Breakout room functionality not available. Make sure breakout rooms are enabled and you are a host or co-host."
+	end if
 	set _borWin to my findSubWindow(appName, "Breakout")
 	if name of _borWin contains "In Progress" then
 		return "Breakout rooms already started. Please close them first."
@@ -667,7 +673,10 @@ on getBreakoutRooms(breakoutFilename)
 	set bFile to POSIX file (borFilePath)
 	set _file to open for access file bFile with write permission
 
-	my clickStatusMenu("Breakout")
+	set bor_clicked to my clickStatusMenu("Breakout")
+	if not bor_clicked then
+		return "Breakout room functionality not available. Make sure breakout rooms are enabled and you are a host or co-host."
+	end if
 	set _borWin to my findSubWindow(appName, "Breakout")
 	set _title to (name of _borWin)
 	set logEntry to "# === " & (my formatDateTime(current date)) & " " & _title
@@ -686,12 +695,10 @@ end getBreakoutRooms
 
 on doBreakoutRooms(borCommand, filename)
 	if borCommand is "create" then
-		my createBreakoutRooms(filename)
-		return
+		return my createBreakoutRooms(filename)
 	end if
 	if borCommand is "get" then
-		my getBreakoutRooms(filename)
-		return
+		return my getBreakoutRooms(filename)
 	end if
 	return my usageMessage("breakout")
 end doBreakoutRooms
