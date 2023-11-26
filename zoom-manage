@@ -50,12 +50,16 @@ property batchCount : 50 -- can be set via ZOOM_MANAGE_BATCH_SIZE environment va
 -- Top level commands the script understands
 property knownCommands : {Â
 	"help", "reset", "roster", "hands", "camera_off", "admit", "server", "dashboard", Â
-	"breakout", "camera_off", "camera_on", "phone", "no_audio", "muted", "unmuted"}
+	"breakout", "camera_off", "camera_on", "phone", "no_audio", "muted", "unmuted", Â
+	"rename"}
 
 -- zoomRosterDebug uses the ZOOM_DEBUG environment variable.
 -- If it is set to true, filtered rosters (like "hands") will be
 -- output to the console (stderr) in addition to going in the log.
 property zoomRosterDebug : missing value
+
+-- Path to cliclick. See https://github.com/BlueM/cliclick
+property cliclick : "/opt/homebrew/bin/cliclick"
 
 on usageMessage(section)
 	set tid to AppleScript's text item delimiters
@@ -79,12 +83,16 @@ on usageMessage(section)
 			& "    phone - get the list of participants dialing in by phone." & linefeed Â
 			& linefeed Â
 			& "    admit - admit everyone in the Waiting Room." & linefeed Â
-			& "    breakout - create a set of named breakout rooms." & linefeed
-	else
+			& "    breakout - create a set of named breakout rooms." & linefeed Â
+			& linefeed Â
+			& "    rename - rename a participant." & linefeed
+	else if section is "breakout" then
 		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout [create | get | help] filename" & linefeed Â
 			& "    help - print the breakout related help message." & linefeed Â
 			& "    create - Opens up the named file and creates the rooms named there." & linefeed Â
 			& "    get - Get the named rooms and write them into filename." & linefeed
+	else if section is "rename" then
+		return linefeed & "Usage: " & (item -1 of path_parts) & " rename 'Original Name' 'New Name'" & linefeed
 	end if
 end usageMessage
 
@@ -693,6 +701,47 @@ on getBreakoutRooms(breakoutFilename)
 	close access _file
 end getBreakoutRooms
 
+on moveMouse(x, y)
+	-- x and y can be negative, depending on the arrangement of external displays
+	-- in that case, cliclick will be confused by its relative position feature.
+	if x < 0 or y < 0 then
+		do shell script cliclick & " m:0,0"
+	end if
+	do shell script cliclick & " m:" & x & "," & y
+end moveMouse
+
+on clickMouse(x, y)
+	-- x and y can be negative, depending on the arrangement of external displays
+	-- in that case, cliclick will be confused by its relative position feature.
+	if x < 0 or y < 0 then
+		do shell script cliclick & " m:0,0"
+	end if
+	do shell script cliclick & " c:" & x & "," & y
+end clickMouse
+
+on renameParticipant(oldName, newName)
+	tell application appName to activate
+	tell application "System Events" to tell process appName
+		tell outline 1 of scroll area 1 of participantWindow
+			repeat with _r in rows
+				if (get value of static text of UI element of _r) as text is oldName then
+					set {_x, _y} to position of UI element 1 of UI element 1 of _r
+					my moveMouse(_x, _y)
+					set {_x2, _y2} to position of UI element 3 of UI element 1 of _r
+					set _drag to (_x2 - _x) as integer
+					do shell script cliclick & " c:+" & _drag & ",+0"
+					delay 0.5
+					click menu item "Rename" of menu 1 of UI element 1 of _r
+					delay 0.5
+					keystroke newName
+					keystroke "\r"
+					exit repeat
+				end if
+			end repeat
+		end tell
+	end tell
+end renameParticipant
+
 on doBreakoutRooms(borCommand, filename)
 	if borCommand is "create" then
 		return my createBreakoutRooms(filename)
@@ -710,6 +759,7 @@ on run argv
 	else
 		set arg to "roster"
 	end if
+	if arg is not in knownCommands then log "Error: unknown command: " & arg
 	if arg is "help" or arg is not in knownCommands then
 		return my usageMessage("top")
 	else if arg is "reset" then
@@ -753,6 +803,11 @@ on run argv
 				return my usageMessage("breakout")
 			end if
 			return my doBreakoutRooms(item 2 of argv, item 3 of argv)
+		else if arg is "rename" then
+			if argCount is not 3 then
+				return my usageMessage("rename")
+			end if
+			return my renameParticipant(item 2 of argv, item 3 of argv)
 		end if
 	on error errMsg number errNum
 		set e_str to "Error: " & errMsg

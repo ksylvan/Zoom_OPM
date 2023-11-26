@@ -111,6 +111,12 @@ Clone this repository and ensure you can get the backend API server running.
 git clone https://github.com/ksylvan/Zoom_OPM
 ```
 
+Install the [cliclick][cliclick] tool.
+
+```bash
+brew install cliclick
+```
+
 1. Ensure that the Zoom application is running and that you're in a Zoom
    meeting.
 
@@ -171,6 +177,7 @@ the console (stderr).
 - **breakout**: Manage creating breakout rooms.
   Run `./zoom-manage breakout help` for details and see [this documentation][breakout-readme]
   for the format of the breakout room files.
+- **rename**: Rename participants via the command line.
 
 To execute a command, use the following syntax:
 
@@ -190,6 +197,7 @@ This will generate a roster of current participants in the Zoom meeting.
 
 The backend server and dashboard require additional setup and may have their own dependencies.
 Ensure that you've followed the provided [setup instructions][backend-docs].
+You must also install the [cliclick][cliclick] tool.
 
 ### Known Issues
 
@@ -227,3 +235,4 @@ This work is Copyright (c) 2023, [Kayvan A. Sylvan][linkedin] and is released un
 [zoom-manage-scrip]: ./zoom-manage
 [zoom-opm-tools-logo]: ./frontend/zoom-opm-tools.png
 [breakout-readme]: ./breakout/README.md
+[cliclick]: https://github.com/BlueM/cliclick
