@@ -429,13 +429,10 @@ on runBackendServer()
 	end if
 	set titleString to "\\033]0;" & scriptName & " Backend Server\\007"
 	set cmd to "echo -n -e \"" & titleString & "\";cd " & topLevelDirectory & "backend; ./server.py; exit"
+	do shell script "open -a Terminal " & topLevelDirectory
 	tell application "Terminal"
 		activate
-		if (count of windows) is 0 then
-			do script cmd
-		else
-			do script cmd in window 1
-		end if
+		do script cmd in window 1
 	end tell
 end runBackendServer
 

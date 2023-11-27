@@ -128,6 +128,13 @@ before resetting the database.
 - **Method**: `GET`
 - **Response**: Returns a JSON object containing python version, fastpai version, and the current datetime.
 
+### 11. Environment Variables
+
+- **URL**: `/env`
+- **Method**: `GET`
+- **Response**: Returns a JSON object containing all the environment variables. This is useful for seeing if
+  the `ZOOM_RENAME_FILE` environment variable is set up (so auto-renaming of participants will work).
+
 ## License
 
 This software is provided under the MIT License. See the provided [LICENSE](../LICENSE) file for details.

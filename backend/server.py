@@ -28,6 +28,7 @@ import subprocess
 from datetime import datetime
 from sys import version as python_version
 from typing import List
+import os
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi import __version__ as fastapi_version
@@ -193,6 +194,12 @@ def execute_hands():
 def execute_admit():
     result = subprocess.run([zoom_manage, "admit"], capture_output=True)
     return result
+
+@app.get("/env")
+def get_environment_variables():
+    # Convert the os.environ dict to a regular dict for FastAPI to handle it properly
+    env_vars = dict(os.environ)
+    return env_vars
 
 if __name__ == "__main__":
     init_db()  # Initialize the database
