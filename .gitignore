@@ -3,6 +3,9 @@ logs/
 .DS_Store
 backend/__pycache__
 backend/zoom_meeting*.db
-breakout/*
 !breakout/
 !breakout/README.md
+breakout/*
+!rename/
+!rename/README.md
+rename/*

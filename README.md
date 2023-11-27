@@ -137,6 +137,8 @@ brew install cliclick
 
    The most common commands are also available in the dashboard.
 
+NOTE: Run `./zoom-manage help` for comprehensive documentation.
+
 ### Commands
 
 #### Commonly used commands
@@ -177,7 +179,9 @@ the console (stderr).
 - **breakout**: Manage creating breakout rooms.
   Run `./zoom-manage breakout help` for details and see [this documentation][breakout-readme]
   for the format of the breakout room files.
-- **rename**: Rename participants via the command line.
+- **rename**: Rename participants using the command line. Read the documentation [here][rename-docs]
+  about using this function to automatically rename participants soon after they have joined
+  the meeting, with the `ZOOM_RENAME_FILE` environment variable.
 
 To execute a command, use the following syntax:
 
@@ -209,9 +213,8 @@ the user to start a meeting.
 
 - Make the script more robust to variations in the Zoom application user interface.
 
-- Assist with creating named Breakout Rooms.
-
-- Port the [zoom-manage][zoom-manage-scrip] script to Windows. To contribute to a Windows version, please read [this note][windows] about potential pathways to make this happen.
+- Port the [zoom-manage][zoom-manage-scrip] script to Windows. To contribute to a Windows version,
+- please read [this note][windows] about potential pathways to make this happen.
 
 ## Contributing
 
@@ -236,3 +239,4 @@ This work is Copyright (c) 2023, [Kayvan A. Sylvan][linkedin] and is released un
 [zoom-opm-tools-logo]: ./frontend/zoom-opm-tools.png
 [breakout-readme]: ./breakout/README.md
 [cliclick]: https://github.com/BlueM/cliclick
+[rename-docs]: ./rename/README.md

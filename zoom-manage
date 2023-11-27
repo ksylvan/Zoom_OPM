@@ -58,8 +58,19 @@ property knownCommands : {Â
 -- output to the console (stderr) in addition to going in the log.
 property zoomRosterDebug : missing value
 
+-- renameParticipantsFile is a mapping of users to rename upon entry to the meeting.
+-- If set, we use it in the "roster" command to check for and rename
+-- participants. It references the ZOOM_RENAME_FILE environment
+property renameParticipantsFile: missing value
+property renameMappings: missing value -- the mappings found in the above file
+
 -- Path to cliclick. See https://github.com/BlueM/cliclick
 property cliclick : "/opt/homebrew/bin/cliclick"
+
+property environmentDocs: Â
+	"Environment Varibles:" & linefeed Â
+	& "    - ZOOM_DEBUG: Set this to any value to see rosters and filtered lists output on the console." & linefeed Â
+	& "    - ZOOM_RENAME_FILE: Path to a file of participant rename mappings. See rename/README.md file for details." & linefeed
 
 on usageMessage(section)
 	set tid to AppleScript's text item delimiters
@@ -85,7 +96,8 @@ on usageMessage(section)
 			& "    admit - admit everyone in the Waiting Room." & linefeed Â
 			& "    breakout - create a set of named breakout rooms." & linefeed Â
 			& linefeed Â
-			& "    rename - rename a participant." & linefeed
+			& "    rename - rename a participant." & linefeed Â
+			& linefeed & environmentDocs
 	else if section is "breakout" then
 		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout [create | get | help] filename" & linefeed Â
 			& "    help - print the breakout related help message." & linefeed Â
@@ -131,7 +143,65 @@ on setupEnvVariables()
 	set zoomRosterDebug to (zoomRosterDebug is not "unset") -- set to false or true
 	-- batchCount is set to value of ZOOM_MANAGER_BATCH_SIZE (50 if not set)
 	set batchCount to do shell script "echo ${ZOOM_MANAGE_BATCH_SIZE:-" & batchCount & "}"
+	-- renameParticipantsFile points to a mapping file of old to new names with "->" in between them.
+	set renameParticipantsFile to do shell script "echo ${ZOOM_RENAME_FILE:-}"
+	if renameParticipantsFile is "" then set renameParticipantsFile to missing value
 end setupEnvVariables
+
+on filterFileContents(fileLines)
+	-- Given a set of fileLines (usually gathered from "paragraphs of fileContents" idiom)
+	-- Return a new list, ignoring all empty lines and lines starting with "#"
+	set _filtered to {}
+	repeat with _item in fileLines
+		set _s to _item as string
+		if _s is not "" and _s does not start with "#" then
+			set end of _filtered to _s
+		end if
+	end repeat
+	return _filtered
+end filterFileContents
+
+on splitText(theText, theDelimiter)
+    set oldDelimiters to AppleScript's text item delimiters
+    set AppleScript's text item delimiters to theDelimiter
+    set textItems to every text item of theText
+    set AppleScript's text item delimiters to oldDelimiters -- Restore the original delimiters
+    return textItems
+end splitText
+
+on loadRenameMappings()
+	if renameParticipantsFile is missing value then return
+	if not renameParticipantsFile starts with "/" then
+		set renameParticipantsFile to topLevelDirectory & renameParticipantsFile
+	end if
+	tell application "System Events"
+		if (not (exists file renameParticipantsFile)) then
+			error ("Missing ZOOM_RENAME_FILE file: " & renameParticipantsFile) number -1
+		end if
+		set _size to size of (info for POSIX file renameParticipantsFile)
+		if _size is 0 then
+			error ("Empty ZOOM_RENAME_FILE file: " & renameParticipantsFile) number -2
+		end if
+	end tell
+	set _rFile to POSIX file renameParticipantsFile
+	set _file to open for access file _rFile
+	set fileContents to read _file
+	close access _rFile
+
+	set mappings to my filterFileContents(paragraphs of fileContents)
+	set renameMappings to {}
+	repeat with _item in mappings
+		set end of renameMappings to my splitText(_item, "->")
+	end repeat
+end loadRenameMappings
+
+on lookupRenaming(oldName)
+	if renameMappings is missing value then return
+	repeat with _i in renameMappings
+		if item 1 of _i as text is oldName as text then return _i
+	end repeat
+	return missing value
+end lookupRenaming
 
 on formatDateTime(theDateTime)
 	(*
@@ -411,6 +481,7 @@ on generateRoster()
 	set _waitingList to {}
 	set _joinedPrefix to "Joined "
 	set _waitingPrefix to "Waiting Room "
+	my loadRenameMappings()
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
 			set allParticipantNames to get value of static text of UI element of rows
@@ -467,6 +538,25 @@ on generateRoster()
 
 	my trackWaiting(_waitingList)
 	my trackJoined(_joinedList)
+
+	-- Now, run our rename procedure if needed.
+	if renameMappings is missing value then return
+	set _renameToDo to {}
+	set _candidates to {}
+	repeat with _i in renameMappings
+		set end of _candidates to item 1 of _i as text
+	end repeat
+	repeat with participant in _joinedList
+		if participant as text is in _candidates then set end of _renameToDo to participant as text
+	end repeat
+	-- Now we go through each participant in _renameToDo and finish setting up the renaming.
+	repeat with _name in _renameToDo
+		set _res to my lookupRenaming(_name)
+		if _res is not missing value then
+			my renameParticipant(item 1 of _res, item 2 of _res)
+		end if
+		delay 0.4
+	end repeat
 end generateRoster
 
 on joinStringList(_strings)
@@ -596,15 +686,7 @@ on createBreakoutRooms(breakoutFilename)
 	set fileContents to read _file
 	close access _file
 	
-	set rooms to paragraphs of fileContents
-	set _filtered to {}
-	repeat with _item in rooms
-		set _s to _item as string
-		if _s is not "" and _s does not start with "#" then
-			set end of _filtered to _s
-		end if
-	end repeat
-	set rooms to _filtered
+	set rooms to my filterFileContents(paragraphs of fileContents)
 	
 	set roomCount to (count rooms)
 	if roomCount is 0 then
@@ -702,12 +784,7 @@ on getBreakoutRooms(breakoutFilename)
 end getBreakoutRooms
 
 on moveMouse(x, y)
-	-- x and y can be negative, depending on the arrangement of external displays
-	-- in that case, cliclick will be confused by its relative position feature.
-	if x < 0 or y < 0 then
-		do shell script cliclick & " m:0,0"
-	end if
-	do shell script cliclick & " m:" & x & "," & y
+	do shell script cliclick & " m:=" & x & ",=" & y
 end moveMouse
 
 on clickMouse(x, y)
@@ -735,6 +812,7 @@ on renameParticipant(oldName, newName)
 					delay 0.5
 					keystroke newName
 					keystroke "\r"
+					my logMessage("Renamed: " & oldName & " => " & newName, logFile)
 					exit repeat
 				end if
 			end repeat
@@ -749,6 +827,7 @@ on doBreakoutRooms(borCommand, filename)
 	if borCommand is "get" then
 		return my getBreakoutRooms(filename)
 	end if
+	log "Error: Unknown breakout subcommand: " & borCommand
 	return my usageMessage("breakout")
 end doBreakoutRooms
 
@@ -800,14 +879,16 @@ on run argv
 			my letPeopleIn()
 		else if arg is "breakout" then
 			if argCount is not 3 then
-				return my usageMessage("breakout")
+				log my usageMessage("breakout")
+			else
+				log my doBreakoutRooms(item 2 of argv, item 3 of argv)
 			end if
-			return my doBreakoutRooms(item 2 of argv, item 3 of argv)
 		else if arg is "rename" then
 			if argCount is not 3 then
-				return my usageMessage("rename")
+				log my usageMessage("rename")
+			else
+				log my renameParticipant(item 2 of argv, item 3 of argv)
 			end if
-			return my renameParticipant(item 2 of argv, item 3 of argv)
 		end if
 	on error errMsg number errNum
 		set e_str to "Error: " & errMsg
