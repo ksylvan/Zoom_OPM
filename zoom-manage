@@ -478,6 +478,7 @@ on generateRoster()
 	set _waitingList to {}
 	set _joinedPrefix to "Joined "
 	set _waitingPrefix to "Waiting Room "
+	set _notJoinedPrefix to "Not Joined"
 	my loadRenameMappings()
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
@@ -494,6 +495,7 @@ on generateRoster()
 					set _inWaitingList to false
 					set _inJoinedList to true
 				end if
+				if _pName starts with _notJoinedPrefix then exit repeat
 				if (i is 1) and (not _inWaitingList) and (not _inJoinedList) then
 					set _joinedList to allParticipantNames
 					exit repeat
