@@ -23,7 +23,7 @@ Jinendra Jain->#Jinendra Jain
 Then invoke the `zoom-manager` application like this:
 
 ```bash
-export ZOOM_RENAME_FILE=rename/yout_file.txt
+export ZOOM_RENAME_FILE=rename/your_file.txt
 ./zoom-manage roster
 ```
 
