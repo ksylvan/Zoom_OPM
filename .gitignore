@@ -9,3 +9,5 @@ breakout/*
 !rename/
 !rename/README.md
 rename/*
+.env
+*/.env

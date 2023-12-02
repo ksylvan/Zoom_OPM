@@ -32,9 +32,16 @@ functionality, you need to ensure that the shell that starts the backed server
 has the ZOOM_RENAME_FILE environment variable correctly set up. For example:
 
 ```bash
-export ZOOM_RENAME_FILE=rename/yout_file.txt
+export ZOOM_RENAME_FILE=rename/your_file.txt
 ./zoom-manage server
 ./zoom-manage dashboard
+```
+
+Alternatively, you can place a `.env` file in the `backend/` directory
+that contains the following:
+
+```bash
+ZOOM_RENAME_FILE=rename/your_file.txt
 ```
 
 Then in the dashboard, you can toggle the "Automatic Roster Update" button

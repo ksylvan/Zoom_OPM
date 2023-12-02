@@ -552,7 +552,7 @@ on generateRoster()
 	repeat with _name in _renameToDo
 		set _res to my lookupRenaming(_name)
 		if _res is not missing value then
-			my renameParticipant(item 1 of _res, item 2 of _res)
+			my renameParticipant(item 1 of _res, item 2 of _res, false)
 		end if
 		delay 0.4
 	end repeat
@@ -787,15 +787,30 @@ on moveMouse(x, y)
 end moveMouse
 
 on clickMouse(x, y)
-	-- x and y can be negative, depending on the arrangement of external displays
-	-- in that case, cliclick will be confused by its relative position feature.
-	if x < 0 or y < 0 then
-		do shell script cliclick & " m:0,0"
-	end if
-	do shell script cliclick & " c:" & x & "," & y
+	do shell script cliclick & " c:=" & x & ",=" & y
 end clickMouse
 
-on renameParticipant(oldName, newName)
+on renameParticipant(oldName, newName, verbose)
+	set _canRenameOthers to false
+	set _renamingMe to false
+	tell application "System Events" to tell process appName
+		tell outline 1 of scroll area 1 of participantWindow
+			set allParticipantNames to get value of static text of UI element of rows
+			set _myName to item 1 of allParticipantNames as string
+			set _renamingMe to (_myName is oldName)
+			set _canRenameOthers to (_myName contains "(Host, me)") or (_myName contains "(Co-host, me)")
+		end tell
+	end tell
+	if not _renamingMe and not _canRenameOthers then
+		if verbose then
+			log "ERROR: You need to be Host or Co-Host to rename other partcipants."
+			return
+		end if
+	end if
+	if not _renamingMe and oldName ends with "(Host)" or oldName ends with "(Co-host)" then
+		log "ERROR: You can not rename a Host or Co-host."
+		return
+	end if
 	tell application appName to activate
 	tell application "System Events" to tell process appName
 		tell outline 1 of scroll area 1 of participantWindow
@@ -886,7 +901,7 @@ on run argv
 			if argCount is not 3 then
 				log my usageMessage("rename")
 			else
-				log my renameParticipant(item 2 of argv, item 3 of argv)
+				log my renameParticipant(item 2 of argv, item 3 of argv, true)
 			end if
 		end if
 	on error errMsg number errNum

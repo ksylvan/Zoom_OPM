@@ -21,6 +21,8 @@
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  """
 
+from dotenv import load_dotenv
+
 import re
 import shutil
 import sqlite3
@@ -203,5 +205,6 @@ def get_environment_variables():
 
 if __name__ == "__main__":
     init_db()  # Initialize the database
+    load_dotenv()  # Load the .env file if it exists
     import uvicorn
     uvicorn.run(app, host="localhost", port=5000)
