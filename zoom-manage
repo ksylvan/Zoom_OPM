@@ -155,6 +155,7 @@ on filterFileContents(fileLines)
 	repeat with _item in fileLines
 		set _s to _item as string
 		if _s is not "" and _s does not start with "#" then
+			if _s starts with "\\" then set _s to text 2 through -1 of _s
 			set end of _filtered to _s
 		end if
 	end repeat

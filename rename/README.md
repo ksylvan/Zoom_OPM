@@ -18,6 +18,10 @@ Mickey Rooney->@Mickey Rooney
 
 # Staff members with a preceding "#"
 Jinendra Jain->#Jinendra Jain
+
+# Special case! If you need to rename a name that starts with a "#",
+# you can start a line with "\" and the backslash is ignored.
+\# Kayvan Sylvan-># Landmark Leader
 ```
 
 Then invoke the `zoom-manager` application like this:

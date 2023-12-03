@@ -19,6 +19,12 @@ Virtual Cafe 5
 #
 Seminar Leader Room 1
 Seminar Leader Room 2
+
+# If you want a room whose name starts with "#"
+# then start the line with a backslash (\) character
+# which is then ignored.
+\# Huddle Room
+@ Huddle Room
 ```
 
 Then invoke the `zoom-manager` application like this:
