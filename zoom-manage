@@ -61,8 +61,8 @@ property zoomRosterDebug : missing value
 -- renameParticipantsFile is a mapping of users to rename upon entry to the meeting.
 -- If set, we use it in the "roster" command to check for and rename
 -- participants. It references the ZOOM_RENAME_FILE environment
-property renameParticipantsFile: missing value
-property renameMappings: missing value -- the mappings found in the above file
+property renameParticipantsFile : missing value
+property renameMappings : missing value -- the mappings found in the above file
 
 -- Path to cliclick. See https://github.com/BlueM/cliclick
 property cliclick : "/opt/homebrew/bin/cliclick"
@@ -602,11 +602,11 @@ end generateFilteredRoster
 
 on howManyWaiting(waitingRoomText)
 	-- Take a string like "Waiting Room (3)" and return the number in the parentheses
-	set {TID, AppleScript's text item delimiters} to {AppleScript's text item delimiters, "("}
+	set {tid, AppleScript's text item delimiters} to {AppleScript's text item delimiters, "("}
 	set thePart to text item 2 of waitingRoomText
 	set AppleScript's text item delimiters to ")"
 	set theValue to text item 1 of thePart
-	set AppleScript's text item delimiters to TID -- restore original text item delimiters
+	set AppleScript's text item delimiters to tid -- restore original text item delimiters
 	return theValue as integer
 end howManyWaiting
 
@@ -773,7 +773,15 @@ on getBreakoutRooms(breakoutFilename)
 
 	tell application "System Events" to tell process appName to tell _borWin
 		tell table 1 of scroll area 1 of group 1
-			set rooms to description of UI element 1 of UI element 1 of rows
+			set _rows to rows
+			set rooms to {}
+			repeat with _r in _rows
+				set _room to description of UI element 1 of UI element 1 of _r as string
+				if _room is "text"
+					set _room to "#  " & name of UI element 1 of UI element 1 of _r as string
+				end if
+				set end of rooms to _room
+			end repeat
 		end tell
 	end tell
 	repeat with eachRoom in rooms
