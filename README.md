@@ -182,6 +182,8 @@ the console (stderr).
 - **rename**: Rename participants using the command line. Read the documentation [here][rename-docs]
   about using this function to automatically rename participants soon after they have joined
   the meeting, with the `ZOOM_RENAME_FILE` environment variable.
+- **co-host** and **host**: You can Co-Host participants via the command-line. You can also
+  relinquish Host to another participant.
 
 To execute a command, use the following syntax:
 

@@ -30,7 +30,6 @@ property appName : "zoom.us"
 property appVersion : missing value
 property topZoomWindow : "Zoom"
 property meetingWindow : "Zoom Meeting"
-property sharingWindow : "zoom share statusbar window"
 property participantWindow : missing value
 
 -- These three files are created in the logs/ subdirectory.
@@ -51,7 +50,7 @@ property batchCount : 50 -- can be set via ZOOM_MANAGE_BATCH_SIZE environment va
 property knownCommands : {Â
 	"help", "reset", "roster", "hands", "camera_off", "admit", "server", "dashboard", Â
 	"breakout", "camera_off", "camera_on", "phone", "no_audio", "muted", "unmuted", Â
-	"rename"}
+	"rename", "co-host", "host"}
 
 -- zoomRosterDebug uses the ZOOM_DEBUG environment variable.
 -- If it is set to true, filtered rosters (like "hands") will be
@@ -97,6 +96,8 @@ on usageMessage(section)
 			& "    breakout - create a set of named breakout rooms." & linefeed Â
 			& linefeed Â
 			& "    rename - rename a participant." & linefeed Â
+			& "    co-host - make a participant a co-host." & linefeed Â
+			& "    host - make a participant the meeting host (NOTE: You will not be Host or Co-Host)" & linefeed Â
 			& linefeed & environmentDocs
 	else if section is "breakout" then
 		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout [create | get | help] filename" & linefeed Â
@@ -105,6 +106,12 @@ on usageMessage(section)
 			& "    get - Get the named rooms and write them into filename." & linefeed
 	else if section is "rename" then
 		return linefeed & "Usage: " & (item -1 of path_parts) & " rename 'Original Name' 'New Name'" & linefeed
+	else if section is "co-host" then
+		set more to "    You can also withdraw co-host by re-running the command with the \"(Co-host)\" name." & linefeed
+		return linefeed & "Usage: " & (item -1 of path_parts) & " co-host 'Participant Name'" & linefeed & more
+	else if section is "host" then
+		set more to "    Warning: Once you do this, you are no longer Host or Co-Host." & linefeed
+		return linefeed & "Usage: " & (item -1 of path_parts) & " host 'Participant Name'" & linefeed & more
 	end if
 end usageMessage
 
@@ -799,7 +806,7 @@ on clickMouse(x, y)
 	do shell script cliclick & " c:=" & x & ",=" & y
 end clickMouse
 
-on renameParticipant(oldName, newName, verbose)
+on useParticipantMenu(cmd, oldName, newName, verbose)
 	set _canRenameOthers to false
 	set _renamingMe to false
 	tell application "System Events" to tell process appName
@@ -807,18 +814,32 @@ on renameParticipant(oldName, newName, verbose)
 			set allParticipantNames to get value of static text of UI element of rows
 			set _myName to item 1 of allParticipantNames as string
 			set _renamingMe to (_myName is oldName)
-			set _canRenameOthers to (_myName contains "(Host, me)") or (_myName contains "(Co-host, me)")
+			set _userIsHost to (_myName contains "(Host, me)")
+			set _userIsCoHost to (_myName contains "(Co-host, me)")
+			set _canRenameOthers to _userIsHost or _userIsCoHost
 		end tell
 	end tell
-	if not _renamingMe and not _canRenameOthers then
-		if verbose then
-			log "ERROR: You need to be Host or Co-Host to rename other partcipants."
+	if cmd is "rename" then
+		if not _renamingMe and not _canRenameOthers then
+			if verbose then
+				log "ERROR: You need to be Host or Co-Host to rename other partcipants."
+				return
+			end if
+		end if
+		if not _renamingMe and oldName ends with "(Host)" or oldName ends with "(Co-host)" then
+			log "ERROR: You can not rename a Host or Co-host."
 			return
 		end if
-	end if
-	if not _renamingMe and oldName ends with "(Host)" or oldName ends with "(Co-host)" then
-		log "ERROR: You can not rename a Host or Co-host."
-		return
+	else if cmd is "co-host" then
+		if not _userIsHost then
+			log "ERROR: You need to be Host to grant or withdraw Co-Host to other partcipants."
+			return
+		end if
+	else if cmd is "host" then
+		if not _userIsHost then
+			log "ERROR: You need to be Host to reilnquish Host to other partcipants."
+			return
+		end if
 	end if
 	tell application appName to activate
 	tell application "System Events" to tell process appName
@@ -831,17 +852,52 @@ on renameParticipant(oldName, newName, verbose)
 					set _drag to (_x2 - _x) as integer
 					do shell script cliclick & " c:+" & _drag & ",+0"
 					delay 0.5
-					click menu item "Rename" of menu 1 of UI element 1 of _r
-					delay 0.5
-					keystroke newName
-					keystroke "\r"
-					my logMessage("Renamed: " & oldName & " => " & newName, logFile)
-					exit repeat
+					tell menu 1 of UI element 1 of _r
+						if cmd is "rename" then
+							click menu item "Rename"
+							delay 0.5
+							keystroke newName
+							keystroke "\r"
+							my logMessage("Renamed: " & oldName & " => " & newName, logFile)
+							exit repeat
+						else if cmd is "co-host" then
+							if exists menu item "Make Co-host" then
+								click menu item "Make Co-host"
+								delay 0.5
+								keystroke "\r"
+								my logMessage("Made co-host: " & oldName, logFile)
+							else if exists menu item "Withdraw Co-host Permission" then
+								click menu item "Withdraw Co-host Permission"
+								my logMessage("Revoked co-host: " & oldName, logFile)
+							end if
+							exit repeat
+						else if cmd is "host" then
+							if exists menu item "Make Host" then
+								click menu item "Make Host"
+								delay 0.5
+								keystroke "\r"
+								my logMessage("Gave host to: " & oldName, logFile)
+							end if
+						end if
+					end tell
 				end if
 			end repeat
 		end tell
 	end tell
+end useParticipantMenu
+
+on renameParticipant(oldName, newName, verbose)
+	my useParticipantMenu("rename", oldName, newName, verbose)
 end renameParticipant
+
+on coHostParticipant(participantName)
+	my useParticipantMenu("co-host", participantName, "", true)
+end coHostParticipant
+
+on giveHostToParticipant(participantName)
+	my useParticipantMenu("host", participantName, "", true)
+end coHostParticipant
+
 
 on doBreakoutRooms(borCommand, filename)
 	if borCommand is "create" then
@@ -911,6 +967,18 @@ on run argv
 				log my usageMessage("rename")
 			else
 				log my renameParticipant(item 2 of argv, item 3 of argv, true)
+			end if
+		else if arg is "co-host" then
+			if argCount is not 2 then
+				log my usageMessage("co-host")
+			else
+				log my coHostParticipant(item 2 of argv)
+			end if
+		else if arg is "host" then
+			if argCount is not 2 then
+				log my usageMessage("host")
+			else
+				log my giveHostToParticipant(item 2 of argv)
 			end if
 		end if
 	on error errMsg number errNum
