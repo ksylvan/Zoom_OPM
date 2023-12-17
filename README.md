@@ -208,8 +208,8 @@ You must also install the [cliclick][cliclick] tool.
 ### Known Issues
 
 The script assumes that the Zoom app is installed. If the Zoom app is not
-running, the script will start the Zoom app and create a dialog box prompting
-the user to start a meeting.
+running, the script will start the Zoom app and log a message on the console,
+prompting the user to start a meeting.
 
 ### Future Enhancements
 

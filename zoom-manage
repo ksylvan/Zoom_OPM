@@ -264,9 +264,6 @@ on logMessage(message, filePath)
 end logMessage
 
 on checkZoomRunning()
-	-- This code checks if an application (appName) is running and if it is,
-	-- it sets the variable appVersion to the version of the application.
-	set _isRunning to false
 	tell application "System Events"
 		set _isRunning to (name of every process) contains appName
 	end tell
@@ -349,17 +346,14 @@ on startParticipantWindow()
 end startParticipantWindow
 
 on checkZoomMeetingRunning()
-	repeat
-		-- Make sure we are in a Zoom meeting
-		tell application "System Events" to tell process appName
-			set _startMeetingMenu to my findStatusMenu("Join a Meeting")
-			if _startMeetingMenu is not missing value then
-				display dialog "The " & scriptName & " application needs a Zoom Meeting." & linefeed & "Please join the Zoom Meeting and press OK."
-			else
-				exit repeat
-			end if
-		end tell
-	end repeat
+	-- Make sure we are in a Zoom meeting
+	tell application "System Events" to tell process appName
+		set _startMeetingMenu to my findStatusMenu("Join a Meeting")
+		if _startMeetingMenu is not missing value then
+			set _msg to "The " & scriptName & " application needs a Zoom Meeting. Please join a meeting first."
+			error (_msg) number -3
+		end if
+	end tell
 end checkZoomMeetingRunning
 
 on appLogMessage(message)
