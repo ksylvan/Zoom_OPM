@@ -120,11 +120,14 @@ brew install cliclick
 1. Ensure that the Zoom application is running and that you're in a Zoom
    meeting.
 
-2. Execute the `zoom-manage` script, to run the backend server.
+2. Start the backend server.
 
    ```bash
-   ./zoom-manage server
+   ./zoom-manage server start
    ```
+
+   This starts the server in its own Terminal window. You can kill the server using
+   `/.zoom-manage server stop`.
 
 3. Start the dashboard.
 

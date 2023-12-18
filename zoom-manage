@@ -79,7 +79,7 @@ on usageMessage(section)
 	if section is "top" then
 		return linefeed & "Usage: " & (item -1 of path_parts) & " [command]" & linefeed Â
 			& "    help - show usage message." & linefeed & linefeed Â
-			& "    server - run the backend server. Starts the server in its own terminal." & linefeed Â
+			& "    server - start/stop the backend server. Starts the server in its own terminal." & linefeed Â
 			& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
 			& "    reset - reset the tracking database." & linefeed & linefeed Â
 			& "    roster (default action) - get current roster." & linefeed Â
@@ -112,6 +112,9 @@ on usageMessage(section)
 	else if section is "host" then
 		set more to "    Warning: Once you do this, you are no longer Host or Co-Host." & linefeed
 		return linefeed & "Usage: " & (item -1 of path_parts) & " host 'Participant Name'" & linefeed & more
+	else if section is "server" then
+		set more to "    The start action launches the server in its own Terminal window." & linefeed
+		return linefeed & "Usage: " & (item -1 of path_parts) & " server [start|stop]" & linefeed & more
 	end if
 end usageMessage
 
@@ -437,6 +440,25 @@ on runBackendServer()
 		do script cmd in window 1
 	end tell
 end runBackendServer
+
+on killBackendServer()
+	tell application "System Events"
+		set _title to scriptName & " Backend Server"
+		set _win to missing value
+		try
+			set _win to first window of application process "Terminal" whose name contains _title
+		end try
+		if _win is missing value then
+			log "No backend server window found. Nothing to do."
+			return
+		end if
+		click UI Element 2 of _win
+		delay 0.2
+		set {_x, _y} to position of _win
+		my clickMouse(_x, _y)
+		keystroke "\r"
+	end tell
+end killBackendServer
 
 on openDashboard()
 	do shell script "open " & topLevelDirectory & "frontend/index.html"
@@ -920,8 +942,19 @@ on run argv
 	
 	my setUpLogFiles()
 	if arg is "server" then
-		return my runBackendServer()
+		if argCount is not 2 then
+			return my usageMessage("server")
+		end if
+		set _action to (item 2 of argv)
+		if _action is not in {"start", "stop"} then
+			log "Error: unknown action for \"server\" command: " & _action
+			return my usageMessage("server")
+		end if
+		if _action is "start" then return my runBackendServer()
+		-- Only possible action now is "stop"
+		return my killBackendServer()
 	end if
+
 	if arg is "dashboard" then
 		return my openDashboard()
 	end if
