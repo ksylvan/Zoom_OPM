@@ -433,7 +433,7 @@ on runBackendServer()
 		error "Server is already running. " & jsonOutput number -1
 	end if
 	set titleString to "\\033]0;" & scriptName & " Backend Server\\007"
-	set cmd to "echo -n -e \"" & titleString & "\";cd " & topLevelDirectory & "backend; ./server.py; exit"
+	set cmd to "echo -n -e \"" & titleString & "\";cd " & topLevelDirectory & "backend; . ./venv/bin/activate; ./server.py; exit"
 	do shell script "open -a Terminal " & topLevelDirectory
 	tell application "Terminal"
 		activate

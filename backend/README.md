@@ -32,7 +32,7 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 
 ## Running the Server
 
-1. If needed, activate the virtual environment
+1. Activate the virtual environment
 
    ```bash
    source venv/bin/activate

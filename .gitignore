@@ -11,3 +11,4 @@ breakout/*
 rename/*
 .env
 */.env
+*/venv
