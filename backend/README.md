@@ -17,7 +17,7 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
    cd Zoom_OPM/backend
    ```
 
-2. Create a virtual environment (optional)
+2. Create a virtual environment
 
    ```bash
    python3 -m venv venv
