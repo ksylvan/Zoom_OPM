@@ -19,15 +19,26 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 
 2. Create a virtual environment
 
+   On the Mac, the easiest way to do thi is using the [`uv` tool][uv].
+
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   uv venv .env/zoom
+   ```
+
+   The output will look like this:
+
+   ```text
+   Using Python 3.12.3 interpreter at: /opt/homebrew/opt/python@3.12/bin/python3.12
+   Creating virtualenv at: .env/zoom
+   Activate with: source .env/zoom/bin/activate
    ```
 
 3. Install the required packages
 
    ```bash
-   pip3 install -r requirements.txt
+   source .env/zoom/bin/activate
+   uv pip install -r requirements.txt
    ```
 
 ## Running the Server
@@ -35,7 +46,7 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 1. Activate the virtual environment
 
    ```bash
-   source venv/bin/activate
+   source .env/zoom/bin/activate
    ```
 
 2. Run the FastAPI server:
@@ -142,3 +153,4 @@ This software is provided under the MIT License. See the provided [LICENSE](../L
 [fastapi-swagger]: http://localhost:5000/docs
 [fastapi-redoc]: http://localhost:5000/redoc
 [fastapi-docs]: https://fastapi.tiangolo.com/#interactive-api-docs
+[uv]: https://github.com/astral-sh/uv

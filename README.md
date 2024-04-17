@@ -120,7 +120,7 @@ brew install cliclick
 1. Ensure that the Zoom application is running and that you're in a Zoom
    meeting.
 
-2. Start the backend server.
+2. Start the backend server. First, follow the instructions in the [Backend README][backend-docs].
 
    ```bash
    ./zoom-manage server start
