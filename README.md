@@ -87,8 +87,8 @@ and `YYYYMMDD-hands.txt`, where `YYYYMMDD` is the current date.
 This is an AppleScript application built to run natively on macOS, making it
 compatible with most macOS versions spanning from the older releases to the latest.
 
-It has been tested on macOS Sonoma (14.1.2) on an Apple M2 MacBook Air, running
-Zoom version 5.16.10 (25689).
+It has been tested on macOS Sonoma (14.5) on an Apple M2 MacBook Air running
+Zoom Version: 5.17.11 (31580) and an Apple M3 MacBook Pro, running Zoom Workplace Version: 6.0.0 (33147).
 
 The backend component is a [FastAPI][fastapi] server written in Python3 that
 serves the "Zoom Meeting Tracker" frontend written with JavaScript. You can

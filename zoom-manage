@@ -457,6 +457,8 @@ on killBackendServer()
 		set {_x, _y} to position of _win
 		my clickMouse(_x, _y)
 		keystroke "\r"
+		my clickMouse(_x, _y)
+		keystroke "\r"
 	end tell
 end killBackendServer
 
