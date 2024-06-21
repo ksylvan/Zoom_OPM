@@ -23,7 +23,7 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
-   uv venv .venv/zoom
+   uv venv .venv
    ```
 
    The output will look like this:
