@@ -14,7 +14,7 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 
    ```bash
    git clone https://github.com/ksylvan/Zoom_OPM
-   cd Zoom_OPM/backend
+   cd Zoom_OPM
    ```
 
 2. Create a virtual environment
@@ -23,22 +23,22 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh
-   uv venv .env/zoom
+   uv venv .venv/zoom
    ```
 
    The output will look like this:
 
    ```text
    Using Python 3.12.3 interpreter at: /opt/homebrew/opt/python@3.12/bin/python3.12
-   Creating virtualenv at: .env/zoom
-   Activate with: source .env/zoom/bin/activate
+   Creating virtualenv at: .venv/zoom
+   Activate with: source .venv/zoom/bin/activate
    ```
 
 3. Install the required packages
 
    ```bash
-   source .env/zoom/bin/activate
-   uv pip install -r requirements.txt
+   source .venv/zoom/bin/activate
+   uv pip install -r backend/requirements.txt
    ```
 
 ## Running the Server
@@ -46,13 +46,13 @@ This FastAPI server provides endpoints to manage and track participants of a Zoo
 1. Activate the virtual environment
 
    ```bash
-   source .env/zoom/bin/activate
+   source .venv/zoom/bin/activate
    ```
 
 2. Run the FastAPI server:
 
    ```bash
-   python3 server.py
+   python3 backend/server.py
    ```
 
 The server will start on <http://localhost:5000>

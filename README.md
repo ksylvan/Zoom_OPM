@@ -37,7 +37,7 @@ large Zoom meetings or seminars.
 ## Confidentiality and Privacy
 
 Please ensure you have the necessary permissions, and you're following
-best practices when using scripts and automations during Zoom meetings.
+best practices when using scripts and automation during Zoom meetings.
 
 Always respect privacy and confidentiality.
 
@@ -74,7 +74,7 @@ See the documentation for the Backend Server and its API [here][backend-docs].
 
 ### The Zoom Manage utility application
 
-The `zoom-manange` script is a utility written in AppleScript designed to help manage
+The `zoom-manage` script is a utility written in AppleScript designed to help manage
 Zoom meetings with ease. This script automates common tasks such as tracking participants,
 handling the waiting room, monitoring raised hands, and logging meeting activities.
 
@@ -159,7 +159,7 @@ NOTE: Run `./zoom-manage help` for comprehensive documentation.
 - **camera_on**: Generate list of participants who are on video.
 - **no_audio** - get the list of participants not connected to audio.
 - **muted** - get the list of participants who are muted.
-- **unmuted** - get the list of participants who are unmuted.
+- **unmuted** - get the list of participants who are un-muted.
 - **phone**: List of participants dialing in by phone.
 
 The lists are output into the `filtered.txt` file in the logs directory. If you set

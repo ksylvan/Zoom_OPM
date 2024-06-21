@@ -11,6 +11,7 @@ breakout/*
 rename/*
 .env
 */.env
+.venv
+.venv/*
 .vscode
 .vscode/*
-

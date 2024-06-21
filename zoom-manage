@@ -244,16 +244,16 @@ on logMessage(message, filePath)
 	try
 		-- Open the log file for writing, creating it if it doesn't exist
 		set _log to open for access file filePath with write permission
-		
+
 		-- Construct the log entry
 		set logEntry to (my formatDateTime(current date)) & " " & message
-		
+
 		-- Write the log entry to the file
 		my appendToFile(_log, logEntry, false)
-		
+
 		-- Close the log file
 		close access _log
-		
+
 	on error errMsg number errNum
 		-- If an error occurs, close the log file (if it's open)
 		try
@@ -433,7 +433,7 @@ on runBackendServer()
 		error "Server is already running. " & jsonOutput number -1
 	end if
 	set titleString to "\\033]0;" & scriptName & " Backend Server\\007"
-	set cmd to "echo -n -e \"" & titleString & "\";cd " & topLevelDirectory & "backend; . ./.env/zoom/bin/activate; ./server.py; exit"
+	set cmd to "echo -n -e \"" & titleString & "\";cd " & topLevelDirectory & "backend; . ../.venv/zoom/bin/activate; ./server.py; exit"
 	do shell script "open -a Terminal " & topLevelDirectory
 	tell application "Terminal"
 		activate
@@ -705,19 +705,19 @@ on createBreakoutRooms(breakoutFilename)
 			error ("Empty breakout file: " & borFilePath) number -2
 		end if
 	end tell
-	
+
 	set bFile to POSIX file (borFilePath)
 	set _file to open for access file bFile
 	set fileContents to read _file
 	close access _file
-	
+
 	set rooms to my filterFileContents(paragraphs of fileContents)
-	
+
 	set roomCount to (count rooms)
 	if roomCount is 0 then
 		return "No rooms are defined in the file " & borFilePath & " - exiting."
 	end if
-	
+
 	set bor_clicked to my clickStatusMenu("Breakout")
 	if not bor_clicked then
 		return "Breakout room functionality not available. Make sure breakout rooms are enabled and you are a host or co-host."
@@ -941,7 +941,7 @@ on run argv
 	else if arg is "reset" then
 		return my resetTrackigData()
 	end if
-	
+
 	my setUpLogFiles()
 	if arg is "server" then
 		if argCount is not 2 then
@@ -960,7 +960,7 @@ on run argv
 	if arg is "dashboard" then
 		return my openDashboard()
 	end if
-	
+
 	my appLogMessage("START " & arg)
 	try
 		my checkZoomRunning()
