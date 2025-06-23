@@ -1,0 +1,27 @@
+{
+	"words": [
+		"autoplay",
+		"cliclick",
+		"Dasboard",
+		"dotenv",
+		"elems",
+		"fastpai",
+		"KHTML",
+		"levelname",
+		"logfile",
+		"osascript",
+		"prefs",
+		"signum",
+		"Sonoma",
+		"unmute",
+		"unmuted",
+		"Uvicorn",
+		"venv",
+		"virtualenv"
+	],
+	"ignorePaths": [
+		".venv",
+		"LICENCE",
+		"cspell.json"
+	]
+}

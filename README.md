@@ -70,7 +70,7 @@ The backend server serves as a bridge between the dashboard and the information 
 the `zoom-manage` utility application. It manages the database of events related to participants
 joining the Zoom meeting and makes that information available to the dashboard.
 
-See the documentation for the Backend Server and its API [here][backend-docs].
+See the documentation for [Backend Server and its API][backend-docs].
 
 ### The Zoom Manage utility application
 
@@ -102,6 +102,7 @@ install python3 on your Mac using [homebrew][homebrew].
 4. **Waiting Room Management**: Automate the process of admitting attendees from the waiting room.
 5. **Logging**: Maintain a log of meeting activities and actions taken during the meeting.
 6. **Integrated Server and Dashboard**: Run a backend server and open a Zoom Meeting Tracker dashboard for enhanced management.
+7. **Stress Testing Helper**: A small Python script is provided to launch many web client instances for load testing. See [StressTesting.md](docs/StressTesting.md).
 
 ## Quick Start
 
@@ -182,7 +183,7 @@ the console (stderr).
 - **breakout**: Manage creating breakout rooms.
   Run `./zoom-manage breakout help` for details and see [this documentation][breakout-readme]
   for the format of the breakout room files.
-- **rename**: Rename participants using the command line. Read the documentation [here][rename-docs]
+- **rename**: Rename participants using the command line. Read [the documentation][rename-docs]
   about using this function to automatically rename participants soon after they have joined
   the meeting, with the `ZOOM_RENAME_FILE` environment variable.
 - **co-host** and **host**: You can Co-Host participants via the command-line. You can also

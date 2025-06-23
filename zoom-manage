@@ -67,7 +67,7 @@ property renameMappings : missing value -- the mappings found in the above file
 property cliclick : "/opt/homebrew/bin/cliclick"
 
 property environmentDocs: Â
-	"Environment Varibles:" & linefeed Â
+	"Environment Variables:" & linefeed Â
 	& "    - ZOOM_DEBUG: Set this to any value to see rosters and filtered lists output on the console." & linefeed Â
 	& "    - ZOOM_RENAME_FILE: Path to a file of participant rename mappings. See rename/README.md file for details." & linefeed
 
@@ -363,9 +363,9 @@ on appLogMessage(message)
 	my logMessage("=== " & scriptName & ": " & message, logFile)
 end appLogMessage
 
-on resetTrackigData()
+on resetTrackingData()
 	do shell script "curl -X POST " & trackerURL & "/reset"
-end resetTrackigData
+end resetTrackingData
 
 on replaceText(theText, searchStr, replacementStr)
 	set theText to theText as text
@@ -840,7 +840,7 @@ on useParticipantMenu(cmd, oldName, newName, verbose)
 	if cmd is "rename" then
 		if not _renamingMe and not _canRenameOthers then
 			if verbose then
-				log "ERROR: You need to be Host or Co-Host to rename other partcipants."
+				log "ERROR: You need to be Host or Co-Host to rename other participants."
 				return
 			end if
 		end if
@@ -850,12 +850,12 @@ on useParticipantMenu(cmd, oldName, newName, verbose)
 		end if
 	else if cmd is "co-host" then
 		if not _userIsHost then
-			log "ERROR: You need to be Host to grant or withdraw Co-Host to other partcipants."
+			log "ERROR: You need to be Host to grant or withdraw Co-Host to other participants."
 			return
 		end if
 	else if cmd is "host" then
 		if not _userIsHost then
-			log "ERROR: You need to be Host to reilnquish Host to other partcipants."
+			log "ERROR: You need to be Host to relinquish Host to other participants."
 			return
 		end if
 	end if
@@ -939,7 +939,7 @@ on run argv
 	if arg is "help" or arg is not in knownCommands then
 		return my usageMessage("top")
 	else if arg is "reset" then
-		return my resetTrackigData()
+		return my resetTrackingData()
 	end if
 
 	my setUpLogFiles()
