@@ -16,3 +16,5 @@ rename/*
 .vscode
 .vscode/*
 *.log
+*.pyc
+tools/__pycache__

@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+"""Stress test script to simulate multiple Zoom participants using Selenium
+This script launches multiple browser instances to join a Zoom meeting as different participants.
+It handles joining the meeting, setting audio preferences, and cleaning up browsers on exit.
+"""
+
 import argparse
 import logging
 import os
@@ -9,6 +14,8 @@ import sys
 import tempfile
 import threading
 import time
+
+import names
 
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
@@ -24,7 +31,7 @@ active_drivers = []
 drivers_lock = threading.Lock()
 
 
-def signal_handler(signum, frame):
+def signal_handler(_signum, _frame):
     """Handle Ctrl+C and other signals to gracefully close browsers"""
     logger = logging.getLogger(__name__)
     logger.info("Received interrupt signal, shutting down browsers...")
@@ -87,13 +94,16 @@ def create_chrome_options(user_data_dir=None):
 
     # Set user agent to avoid detection
     options.add_argument(
-        "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     )
 
     return options
 
 
-def join_meeting_as_participant(meeting_url, participant_name, participant_id):
+def join_meeting_as_participant(
+    meeting_url, participant_name, participant_id, duration_seconds=1800
+):
     """Join a Zoom meeting as a specific participant using Selenium"""
     logger = logging.getLogger(__name__)
     driver = None
@@ -152,7 +162,7 @@ def join_meeting_as_participant(meeting_url, participant_name, participant_id):
                     "Participant %s successfully joined the meeting", participant_name
                 )
                 # Keep browser open for the duration of the test
-                time.sleep(300)  # Stay in meeting for 5 minutes
+                time.sleep(duration_seconds)  # Stay in meeting for specified duration
             else:
                 logger.error(
                     "Participant %s failed to join the meeting", participant_name
@@ -237,7 +247,8 @@ def try_construct_direct_url(meeting_url, participant_name):
         password = match.group(2)
 
         # Construct the direct web app URL
-        direct_url = f"https://app.zoom.us/wc/{meeting_id}/join?fromPWA=1&pwd={password}&uname={participant_name}"
+        direct_url = f"https://app.zoom.us/wc/{meeting_id}/"
+        direct_url += f"join?fromPWA=1&pwd={password}&uname={participant_name}"
         return direct_url
 
     return None
@@ -312,7 +323,8 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
         )
 
         logger.info(
-            "Detection results for %s: meeting_info_text=%d, name_input=%d, join_button=%d, name_label=%d",
+            "Detection results for %s: meeting_info_text=%d,"
+            " name_input=%d, join_button=%d, name_label=%d",
             participant_name,
             len(meeting_info_text),
             len(name_input),
@@ -333,10 +345,12 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                 # Look for the mute button - try multiple selectors
                 mute_selectors = [
                     "//button[contains(text(), 'Mute') and not(contains(text(), 'Unmute'))]",
-                    "//button[contains(@aria-label, 'Mute') and not(contains(@aria-label, 'Unmute'))]",
+                    "//button[contains(@aria-label, 'Mute') "
+                    "and not(contains(@aria-label, 'Unmute'))]",
                     "//button[contains(@title, 'Mute') and not(contains(@title, 'Unmute'))]",
                     "//button[contains(@class, 'mute') and not(contains(@class, 'unmute'))]",
-                    "//button[contains(@aria-label, 'mute') and not(contains(@aria-label, 'unmute'))]",
+                    "//button[contains(@aria-label, 'mute') and "
+                    "not(contains(@aria-label, 'unmute'))]",
                 ]
 
                 # First, check if we're already muted by looking for "Unmute" button
@@ -410,7 +424,8 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                             frame_buttons = driver.find_elements(By.TAG_NAME, "button")
                             frame_inputs = driver.find_elements(By.TAG_NAME, "input")
                             logger.info(
-                                f"In iframe {i}: {len(frame_buttons)} buttons, {len(frame_inputs)} inputs"
+                                f"In iframe {i}: {len(frame_buttons)} "
+                                f"buttons, {len(frame_inputs)} inputs"
                             )
 
                             # Check for mute button in iframe if we haven't muted yet
@@ -418,8 +433,10 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                                 try:
                                     # Look for mute button in iframe
                                     iframe_mute_selectors = [
-                                        "//button[contains(text(), 'Mute') and not(contains(text(), 'Unmute'))]",
-                                        "//button[contains(@aria-label, 'Mute') and not(contains(@aria-label, 'Unmute'))]",
+                                        "//button[contains(text(), 'Mute') and"
+                                        " not(contains(text(), 'Unmute'))]",
+                                        "//button[contains(@aria-label, 'Mute') and "
+                                        "not(contains(@aria-label, 'Unmute'))]",
                                     ]
 
                                     for selector in iframe_mute_selectors:
@@ -433,7 +450,8 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                                             ):
                                                 mute_btn.click()
                                                 logger.info(
-                                                    f"Clicked Mute button in iframe {i} for {participant_name}"
+                                                    "Clicked Mute button in "
+                                                    f"iframe {i} for {participant_name}"
                                                 )
                                                 mute_clicked = True
                                                 time.sleep(1)
@@ -448,7 +466,8 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                                     btn_text = btn.text.strip()
                                     btn_type = btn.get_attribute("type")
                                     logger.info(
-                                        f"Iframe {i} Button {j}: text='{btn_text}', type='{btn_type}'"
+                                        f"Iframe {i} Button {j}: "
+                                        f"text='{btn_text}', type='{btn_type}'"
                                     )
                                 break  # Found buttons, stay in this iframe
                             else:
@@ -463,7 +482,8 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                 all_links = driver.find_elements(By.TAG_NAME, "a")
 
                 logger.info(
-                    f"Debug for {participant_name}: Found {len(all_buttons)} buttons, {len(all_inputs)} inputs, {len(all_links)} links"
+                    f"Debug for {participant_name}: Found {len(all_buttons)} "
+                    f"buttons, {len(all_inputs)} inputs, {len(all_links)} links"
                 )
 
                 for i, btn in enumerate(all_buttons[:10]):  # Show first 10 buttons
@@ -472,18 +492,21 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                     btn_class = btn.get_attribute("class")
                     btn_aria = btn.get_attribute("aria-label")
                     logger.info(
-                        f"Button {i}: text='{btn_text}', type='{btn_type}', class='{btn_class}', aria-label='{btn_aria}'"
+                        f"Button {i}: text='{btn_text}', type='{btn_type}', "
+                        f"class='{btn_class}', aria-label='{btn_aria}'"
                     )
 
                 # Try different selectors for the join button
                 join_selectors = [
                     "//button[contains(text(), 'Join')]",
-                    "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'join')]",
+                    "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                    "'abcdefghijklmnopqrstuvwxyz'), 'join')]",
                     "//input[@type='submit' and contains(@value, 'Join')]",
                     "//a[contains(text(), 'Join')]",
                     "//button[@type='submit']",
                     "//button[contains(@class, 'join')]",
-                    "//*[contains(text(), 'Join') and (name()='button' or name()='input' or name()='a')]",
+                    "//*[contains(text(), 'Join') and (name()='button' or "
+                    "name()='input' or name()='a')]",
                 ]
 
                 for selector in join_selectors:
@@ -493,14 +516,16 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                         )
                         join_button.click()
                         logger.info(
-                            f"Successfully clicked Join button using selector '{selector}' for {participant_name}"
+                            "Successfully clicked Join button using "
+                            f"selector '{selector}' for {participant_name}"
                         )
                         join_success = True
                         time.sleep(3)  # Wait for meeting to load
                         break
                     except TimeoutException:
                         logger.info(
-                            f"Selector '{selector}' did not find a clickable element for {participant_name}"
+                            f"Selector '{selector}' did not find a "
+                            f"clickable element for {participant_name}"
                         )
                         continue
 
@@ -619,6 +644,12 @@ def main():
         action="store_true",
         help="Launch participants in parallel (faster but more resource intensive)",
     )
+    parser.add_argument(
+        "--duration",
+        type=int,
+        default=1800,  # 30 minutes in seconds
+        help="Duration in seconds each participant stays in meeting (default: 1800 = 30 minutes)",
+    )
 
     args = parser.parse_args()
 
@@ -626,45 +657,23 @@ def main():
     logger.info("Meeting URL: %s", args.meeting_url)
     logger.info("Delay between participants: %s seconds", args.delay)
     logger.info("Parallel mode: %s", args.parallel)
+    logger.info(
+        "Duration per participant: %d seconds (%.1f minutes)",
+        args.duration,
+        args.duration / 60.0,
+    )
 
     threads = []
 
-    # Generate more realistic participant names
-    realistic_names = [
-        "Alex Johnson",
-        "Sarah Chen",
-        "Mike Rodriguez",
-        "Emma Wilson",
-        "David Kim",
-        "Lisa Brown",
-        "Carlos Martinez",
-        "Jennifer Lee",
-        "Ryan O'Connor",
-        "Maria Garcia",
-        "James Anderson",
-        "Amy Sylvan",
-        "Tom Murphy",
-        "Rachel Davis",
-        "Kevin Liu",
-        "Hannah Smith",
-        "Daniel Park",
-        "Nicole Taylor",
-        "Chris Williams",
-        "Jessica Moore",
-    ]
-
     for i in range(1, args.count + 1):
         # Use realistic names if available, otherwise fall back to TestUser format
-        if i <= len(realistic_names):
-            participant_name = realistic_names[i - 1]
-        else:
-            participant_name = f"TestUser{i}"
+        participant_name = names.get_full_name()
 
         if args.parallel:
             # Launch participants in parallel using threads
             thread = threading.Thread(
                 target=join_meeting_as_participant,
-                args=(args.meeting_url, participant_name, i),
+                args=(args.meeting_url, participant_name, i, args.duration),
             )
             threads.append(thread)
             thread.start()
@@ -672,10 +681,11 @@ def main():
             # Small delay between thread starts to avoid overwhelming the system
             time.sleep(0.5)
         else:
-            # Launch participants sequentially but with threading so they can all stay in meeting together
+            # Launch participants sequentially but with threading
+            # so they can all stay in meeting together
             thread = threading.Thread(
                 target=join_meeting_as_participant,
-                args=(args.meeting_url, participant_name, i),
+                args=(args.meeting_url, participant_name, i, args.duration),
             )
             threads.append(thread)
             thread.start()

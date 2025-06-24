@@ -10,6 +10,7 @@ import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 
 
@@ -40,8 +41,7 @@ def test_selenium_setup():
         print("Browser closed successfully.")
         print("✅ Selenium setup is working correctly!")
         return True
-
-    except Exception as e:
+    except (WebDriverException, ConnectionError, OSError) as e:
         print(f"❌ Error during setup test: {e}")
         print("\nTroubleshooting:")
         print("1. Make sure Google Chrome is installed")

@@ -102,22 +102,22 @@ python3 stress_test.py --meeting-url "https://zoom.us/wc/12345/join" --count 8 -
 
 ### Common Issues
 
-**Chrome not found**
+#### Chrome not found
 
 - Ensure Google Chrome is installed
 - On macOS: Chrome should be in `/Applications/Google Chrome.app`
 
-**ChromeDriver issues**
+#### ChromeDriver issues
 
 - The tool uses webdriver-manager to automatically handle ChromeDriver
 - If issues persist, try updating: `pip3 install --upgrade webdriver-manager`
 
-**Permission errors**
+#### Permission errors
 
 - Chrome may prompt for microphone/camera permissions
 - The script attempts to handle these automatically
 
-**Meeting not loading**
+#### Meeting not loading
 
 - Verify the meeting URL is correct and the meeting is active
 - Check your internet connection
@@ -163,14 +163,14 @@ You can modify the `join_meeting_as_participant` function to:
 
 ## Example Output
 
-```
+```plaintext
 2024-06-23 10:30:15,123 - INFO - Starting stress test with 5 participants
 2024-06-23 10:30:15,124 - INFO - Meeting URL: https://zoom.us/wc/12345/join
 2024-06-23 10:30:15,125 - INFO - Starting participant TestUser1 (ID: 1)
 2024-06-23 10:30:18,456 - INFO - Clicking 'Join from Your Browser' for TestUser1
 2024-06-23 10:30:21,789 - INFO - Participant TestUser1 successfully joined the meeting
 2024-06-23 10:30:23,124 - INFO - Starting participant TestUser2 (ID: 2)
-...
+[...]
 ```
 
 ## Contributing

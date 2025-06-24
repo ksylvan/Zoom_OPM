@@ -1,5 +1,6 @@
 fastapi
 python-dotenv
+names
 selenium
 uvicorn
 webdriver-manager
