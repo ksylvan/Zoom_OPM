@@ -10,7 +10,6 @@ import logging
 import os
 import re
 import signal
-import sys
 import tempfile
 import threading
 import time
@@ -26,26 +25,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-# Global list to track active drivers for cleanup
-active_drivers = []
-drivers_lock = threading.Lock()
+# Global event to signal shutdown
+shutdown_event = threading.Event()
 
 
 def signal_handler(_signum, _frame):
     """Handle Ctrl+C and other signals to gracefully close browsers"""
     logger = logging.getLogger(__name__)
     logger.info("Received interrupt signal, shutting down browsers...")
-
-    with drivers_lock:
-        for driver in active_drivers:
-            try:
-                driver.quit()
-                logger.info("Browser closed during shutdown")
-            except Exception as e:
-                logger.error("Error closing browser during shutdown: %s", str(e))
-
-    logger.info("Shutdown complete")
-    sys.exit(0)
+    shutdown_event.set()
+    # Let the main thread handle the exit
+    # No sys.exit(0) here
 
 
 def setup_logging():
@@ -122,10 +112,6 @@ def join_meeting_as_participant(
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
 
-        # Register driver for cleanup
-        with drivers_lock:
-            active_drivers.append(driver)
-
         driver.set_window_size(800, 600)  # Construct join URL with participant name
         join_url = f"{meeting_url}&uname={participant_name}"
 
@@ -161,8 +147,21 @@ def join_meeting_as_participant(
                 logger.info(
                     "Participant %s successfully joined the meeting", participant_name
                 )
-                # Keep browser open for the duration of the test
-                time.sleep(duration_seconds)  # Stay in meeting for specified duration
+                # Keep browser open for the duration of the test, but check for shutdown
+                end_time = time.time() + duration_seconds
+                while time.time() < end_time and not shutdown_event.is_set():
+                    time.sleep(1)  # Check for shutdown every second
+
+                if shutdown_event.is_set():
+                    logger.info(
+                        "Shutdown signal received, closing browser for %s",
+                        participant_name,
+                    )
+                else:
+                    logger.info(
+                        "Duration ended for %s, closing browser.", participant_name
+                    )
+
             else:
                 logger.error(
                     "Participant %s failed to join the meeting", participant_name
@@ -186,14 +185,25 @@ def join_meeting_as_participant(
         )
     finally:
         if driver:
+            # Suppress noisy connection errors from urllib3 and selenium during shutdown
+            if shutdown_event.is_set():
+                logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
+                logging.getLogger(
+                    "selenium.webdriver.remote.remote_connection"
+                ).setLevel(logging.ERROR)
             try:
-                # Unregister driver
-                with drivers_lock:
-                    if driver in active_drivers:
-                        active_drivers.remove(driver)
-
                 driver.quit()
                 logger.info("Browser closed for participant %s", participant_name)
+            except WebDriverException as e:
+                if "Connection refused" in str(e) or "Connection reset" in str(e):
+                    logger.info(
+                        "Browser for %s already closed or connection reset during shutdown.",
+                        participant_name,
+                    )
+                else:
+                    logger.error(
+                        "Error closing browser for %s: %s", participant_name, str(e)
+                    )
             except Exception as e:
                 logger.error(
                     "Error closing browser for %s: %s", participant_name, str(e)
