@@ -450,18 +450,18 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
 
             # Check if we need to switch to an iframe
             iframes = driver.find_elements(By.TAG_NAME, "iframe")
-            logger.info(f"Found {len(iframes)} iframes on page for {participant_name}")
+            logger.debug(f"Found {len(iframes)} iframes on page for {participant_name}")
 
             if iframes:
                 for i, iframe in enumerate(iframes):
                     try:
                         driver.switch_to.frame(iframe)
-                        logger.info(f"Switched to iframe {i} for {participant_name}")
+                        logger.debug(f"Switched to iframe {i} for {participant_name}")
 
                         # Check elements in this iframe
                         frame_buttons = driver.find_elements(By.TAG_NAME, "button")
                         frame_inputs = driver.find_elements(By.TAG_NAME, "input")
-                        logger.info(
+                        logger.debug(
                             f"In iframe {i}: {len(frame_buttons)} "
                             f"buttons, {len(frame_inputs)} inputs"
                         )
@@ -488,8 +488,9 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                                         ):
                                             mute_btn.click()
                                             logger.info(
-                                                "Clicked Mute button in "
-                                                f"iframe {i} for {participant_name}"
+                                                "[green]Clicked Mute button in "
+                                                f"iframe {i} for {participant_name}[/green]",
+                                                extra={"markup": True},
                                             )
                                             mute_clicked = True
                                             time.sleep(1)
@@ -505,7 +506,7 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                             for j, btn in enumerate(frame_buttons[:5]):
                                 btn_text = btn.text.strip()
                                 btn_type = btn.get_attribute("type")
-                                logger.info(
+                                logger.debug(
                                     f"Iframe {i} Button {j}: "
                                     f"text='{btn_text}', type='{btn_type}'"
                                 )
@@ -521,7 +522,7 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
             all_inputs = driver.find_elements(By.TAG_NAME, "input")
             all_links = driver.find_elements(By.TAG_NAME, "a")
 
-            logger.info(
+            logger.debug(
                 f"Debug for {participant_name}: Found {len(all_buttons)} "
                 f"buttons, {len(all_inputs)} inputs, {len(all_links)} links"
             )
@@ -531,7 +532,7 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                 btn_type = btn.get_attribute("type")
                 btn_class = btn.get_attribute("class")
                 btn_aria = btn.get_attribute("aria-label")
-                logger.info(
+                logger.debug(
                     f"Button {i}: text='{btn_text}', type='{btn_type}', "
                     f"class='{btn_class}', aria-label='{btn_aria}'"
                 )
@@ -556,22 +557,28 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                     )
                     join_button.click()
                     logger.info(
-                        "Successfully clicked Join button using "
-                        f"selector '{selector}' for {participant_name}"
+                        "[green]Successfully clicked Join button using "
+                        f"selector '{selector}' for {participant_name}[/green]",
+                        extra={"markup": True},
                     )
                     join_success = True
                     time.sleep(3)  # Wait for meeting to load
                     break
                 except TimeoutException:
-                    logger.info(
-                        f"Selector '{selector}' did not find a "
-                        f"clickable element for {participant_name}"
+                    logger.warning(
+                        "[yellow]Selector '%s' did not find a "
+                        "clickable element for %s[/yellow]",
+                        selector,
+                        participant_name,
+                        extra={"markup": True},
                     )
                     continue
 
             if not join_success:
                 logger.error(
-                    f"Could not find any clickable Join button for {participant_name}"
+                    "[red]Could not find any clickable Join button for %s[/red]",
+                    participant_name,
+                    extra={"markup": True},
                 )
                 return False
             else:
