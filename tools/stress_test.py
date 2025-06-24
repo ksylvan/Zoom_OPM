@@ -172,9 +172,17 @@ def join_meeting_as_participant(
             logger.error(
                 "Timeout while trying to join meeting for %s", participant_name
             )
+        except WebDriverException as e:
+            logger.error(
+                "WebDriver error during meeting join for %s: %s",
+                participant_name,
+                str(e),
+            )
         except Exception as e:
             logger.error(
-                "Error during meeting join for %s: %s", participant_name, str(e)
+                "Unexpected error during meeting join for %s: %s",
+                participant_name,
+                str(e),
             )
 
     except WebDriverException as e:
@@ -295,8 +303,10 @@ def handle_zoom_page_navigation(driver, participant_name, logger):
         else:
             # Fallback: try to construct direct URL or look for "Join from Browser"
             try_join_from_browser(driver, participant_name, logger)
-    except Exception:
-        # Fallback to the original method
+    except WebDriverException as e:
+        logger.warning(
+            f"WebDriver error during web app link search for {participant_name}: {str(e)}"
+        )
         try_join_from_browser(driver, participant_name, logger)
 
 
@@ -310,259 +320,257 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
     logger.info("Page title for %s: %s", participant_name, page_title)
 
     # Check if we're on the "Enter Meeting Info" page with multiple detection methods
-    try:
-        # Method 1: Look for the "Enter Meeting Info" text
-        meeting_info_text = driver.find_elements(
-            By.XPATH, "//*[contains(text(), 'Enter Meeting Info')]"
-        )
 
-        # Method 2: Look for the name input field
-        name_input = driver.find_elements(
-            By.XPATH,
-            "//input[contains(@placeholder, 'name') or contains(@placeholder, 'Name')]",
-        )
+    # Method 1: Look for the "Enter Meeting Info" text
+    meeting_info_text = driver.find_elements(
+        By.XPATH, "//*[contains(text(), 'Enter Meeting Info')]"
+    )
 
-        # Method 3: Look for the Join button
-        join_button_elements = driver.find_elements(
-            By.XPATH, "//button[contains(text(), 'Join')]"
-        )
+    # Method 2: Look for the name input field
+    name_input = driver.find_elements(
+        By.XPATH,
+        "//input[contains(@placeholder, 'name') or contains(@placeholder, 'Name')]",
+    )
 
-        # Method 4: Look for "Your Name" label
-        name_label = driver.find_elements(
-            By.XPATH, "//*[contains(text(), 'Your Name')]"
-        )
+    # Method 3: Look for the Join button
+    join_button_elements = driver.find_elements(
+        By.XPATH, "//button[contains(text(), 'Join')]"
+    )
 
-        logger.info(
-            "Detection results for %s: meeting_info_text=%d,"
-            " name_input=%d, join_button=%d, name_label=%d",
-            participant_name,
-            len(meeting_info_text),
-            len(name_input),
-            len(join_button_elements),
-            len(name_label),
-        )
+    # Method 4: Look for "Your Name" label
+    name_label = driver.find_elements(By.XPATH, "//*[contains(text(), 'Your Name')]")
 
-        # If we found any of these elements, we're likely on the Enter Meeting Info page
-        if meeting_info_text or name_input or join_button_elements or name_label:
-            logger.info("Detected meeting join page for %s", participant_name)
+    logger.info(
+        "Detection results for %s: meeting_info_text=%d,"
+        " name_input=%d, join_button=%d, name_label=%d",
+        participant_name,
+        len(meeting_info_text),
+        len(name_input),
+        len(join_button_elements),
+        len(name_label),
+    )
 
-            # Step 1: Click the Mute button (it should be visible in the preview area)
-            mute_clicked = False
+    # If we found any of these elements, we're likely on the Enter Meeting Info page
+    if meeting_info_text or name_input or join_button_elements or name_label:
+        logger.info("Detected meeting join page for %s", participant_name)
+
+        # Step 1: Click the Mute button (it should be visible in the preview area)
+        mute_clicked = False
+        try:
+            # Wait for preview area to load
+            time.sleep(2)
+
+            # Look for the mute button - try multiple selectors
+            mute_selectors = [
+                "//button[contains(text(), 'Mute') and not(contains(text(), 'Unmute'))]",
+                "//button[contains(@aria-label, 'Mute') "
+                "and not(contains(@aria-label, 'Unmute'))]",
+                "//button[contains(@title, 'Mute') and not(contains(@title, 'Unmute'))]",
+                "//button[contains(@class, 'mute') and not(contains(@class, 'unmute'))]",
+                "//button[contains(@aria-label, 'mute') and "
+                "not(contains(@aria-label, 'unmute'))]",
+            ]
+
+            # First, check if we're already muted by looking for "Unmute" button
+            already_muted = False
             try:
-                # Wait for preview area to load
-                time.sleep(2)
-
-                # Look for the mute button - try multiple selectors
-                mute_selectors = [
-                    "//button[contains(text(), 'Mute') and not(contains(text(), 'Unmute'))]",
-                    "//button[contains(@aria-label, 'Mute') "
-                    "and not(contains(@aria-label, 'Unmute'))]",
-                    "//button[contains(@title, 'Mute') and not(contains(@title, 'Unmute'))]",
-                    "//button[contains(@class, 'mute') and not(contains(@class, 'unmute'))]",
-                    "//button[contains(@aria-label, 'mute') and "
-                    "not(contains(@aria-label, 'unmute'))]",
-                ]
-
-                # First, check if we're already muted by looking for "Unmute" button
-                already_muted = False
-                try:
-                    unmute_check = driver.find_elements(
-                        By.XPATH,
-                        "//button[contains(text(), 'Unmute') or contains(@aria-label, 'Unmute')]",
-                    )
-                    if unmute_check:
-                        already_muted = True
-                        logger.info("Participant %s is already muted", participant_name)
-                except Exception:
-                    pass
-
-                if not already_muted:
-                    for selector in mute_selectors:
-                        try:
-                            mute_buttons = driver.find_elements(By.XPATH, selector)
-                            for mute_button in mute_buttons:
-                                if (
-                                    mute_button.is_enabled()
-                                    and mute_button.is_displayed()
-                                ):
-                                    mute_button.click()
-                                    logger.info(
-                                        "Clicked Mute button using selector '%s' for %s",
-                                        selector,
-                                        participant_name,
-                                    )
-                                    mute_clicked = True
-                                    time.sleep(1)
-                                    break
-                            if mute_clicked:
-                                break
-                        except Exception:
-                            continue
-
-                if not mute_clicked and not already_muted:
-                    logger.warning(
-                        "Could not find or click mute button for %s, participant may join unmuted",
-                        participant_name,
-                    )
-                elif already_muted:
-                    mute_clicked = True
-
-            except Exception as e:
-                logger.warning("Error trying to mute %s: %s", participant_name, str(e))
-
-            # Step 2: Click the Join button - try multiple approaches
-            join_success = False
-            try:
-                # Wait a bit more for the page to fully load
-                time.sleep(5)  # Increased wait time
-
-                # Check if we need to switch to an iframe
-                iframes = driver.find_elements(By.TAG_NAME, "iframe")
-                logger.info(
-                    f"Found {len(iframes)} iframes on page for {participant_name}"
+                unmute_check = driver.find_elements(
+                    By.XPATH,
+                    "//button[contains(text(), 'Unmute') or contains(@aria-label, 'Unmute')]",
+                )
+                if unmute_check:
+                    already_muted = True
+                    logger.info("Participant %s is already muted", participant_name)
+            except WebDriverException as e:
+                logger.warning(
+                    f"WebDriver error during mute check for {participant_name}: {str(e)}"
                 )
 
-                if iframes:
-                    for i, iframe in enumerate(iframes):
-                        try:
-                            driver.switch_to.frame(iframe)
-                            logger.info(
-                                f"Switched to iframe {i} for {participant_name}"
-                            )
-
-                            # Check elements in this iframe
-                            frame_buttons = driver.find_elements(By.TAG_NAME, "button")
-                            frame_inputs = driver.find_elements(By.TAG_NAME, "input")
-                            logger.info(
-                                f"In iframe {i}: {len(frame_buttons)} "
-                                f"buttons, {len(frame_inputs)} inputs"
-                            )
-
-                            # Check for mute button in iframe if we haven't muted yet
-                            if frame_buttons and not mute_clicked:
-                                try:
-                                    # Look for mute button in iframe
-                                    iframe_mute_selectors = [
-                                        "//button[contains(text(), 'Mute') and"
-                                        " not(contains(text(), 'Unmute'))]",
-                                        "//button[contains(@aria-label, 'Mute') and "
-                                        "not(contains(@aria-label, 'Unmute'))]",
-                                    ]
-
-                                    for selector in iframe_mute_selectors:
-                                        iframe_mute_buttons = driver.find_elements(
-                                            By.XPATH, selector
-                                        )
-                                        for mute_btn in iframe_mute_buttons:
-                                            if (
-                                                mute_btn.is_enabled()
-                                                and mute_btn.is_displayed()
-                                            ):
-                                                mute_btn.click()
-                                                logger.info(
-                                                    "Clicked Mute button in "
-                                                    f"iframe {i} for {participant_name}"
-                                                )
-                                                mute_clicked = True
-                                                time.sleep(1)
-                                                break
-                                        if mute_clicked:
-                                            break
-                                except Exception:
-                                    pass
-
-                            if frame_buttons:
-                                for j, btn in enumerate(frame_buttons[:5]):
-                                    btn_text = btn.text.strip()
-                                    btn_type = btn.get_attribute("type")
-                                    logger.info(
-                                        f"Iframe {i} Button {j}: "
-                                        f"text='{btn_text}', type='{btn_type}'"
-                                    )
-                                break  # Found buttons, stay in this iframe
-                            else:
-                                driver.switch_to.default_content()  # Switch back if no buttons
-                        except Exception as e:
-                            logger.info(f"Could not switch to iframe {i}: {str(e)}")
-                            driver.switch_to.default_content()
-
-                # Debug: Let's see what buttons are actually on the page
-                all_buttons = driver.find_elements(By.TAG_NAME, "button")
-                all_inputs = driver.find_elements(By.TAG_NAME, "input")
-                all_links = driver.find_elements(By.TAG_NAME, "a")
-
-                logger.info(
-                    f"Debug for {participant_name}: Found {len(all_buttons)} "
-                    f"buttons, {len(all_inputs)} inputs, {len(all_links)} links"
-                )
-
-                for i, btn in enumerate(all_buttons[:10]):  # Show first 10 buttons
-                    btn_text = btn.text.strip()
-                    btn_type = btn.get_attribute("type")
-                    btn_class = btn.get_attribute("class")
-                    btn_aria = btn.get_attribute("aria-label")
-                    logger.info(
-                        f"Button {i}: text='{btn_text}', type='{btn_type}', "
-                        f"class='{btn_class}', aria-label='{btn_aria}'"
-                    )
-
-                # Try different selectors for the join button
-                join_selectors = [
-                    "//button[contains(text(), 'Join')]",
-                    "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
-                    "'abcdefghijklmnopqrstuvwxyz'), 'join')]",
-                    "//input[@type='submit' and contains(@value, 'Join')]",
-                    "//a[contains(text(), 'Join')]",
-                    "//button[@type='submit']",
-                    "//button[contains(@class, 'join')]",
-                    "//*[contains(text(), 'Join') and (name()='button' or "
-                    "name()='input' or name()='a')]",
-                ]
-
-                for selector in join_selectors:
+            if not already_muted:
+                for selector in mute_selectors:
                     try:
-                        join_button = WebDriverWait(driver, 3).until(
-                            EC.element_to_be_clickable((By.XPATH, selector))
-                        )
-                        join_button.click()
-                        logger.info(
-                            "Successfully clicked Join button using "
-                            f"selector '{selector}' for {participant_name}"
-                        )
-                        join_success = True
-                        time.sleep(3)  # Wait for meeting to load
-                        break
-                    except TimeoutException:
-                        logger.info(
-                            f"Selector '{selector}' did not find a "
-                            f"clickable element for {participant_name}"
+                        mute_buttons = driver.find_elements(By.XPATH, selector)
+                        for mute_button in mute_buttons:
+                            if mute_button.is_enabled() and mute_button.is_displayed():
+                                mute_button.click()
+                                logger.info(
+                                    "Clicked Mute button using selector '%s' for %s",
+                                    selector,
+                                    participant_name,
+                                )
+                                mute_clicked = True
+                                time.sleep(1)
+                                break
+                        if mute_clicked:
+                            break
+                    except WebDriverException as e:
+                        logger.warning(
+                            f"WebDriver error at mute button search: {participant_name}: {str(e)}"
                         )
                         continue
 
-                if not join_success:
-                    logger.error(
-                        f"Could not find any clickable Join button for {participant_name}"
-                    )
-                    return False
-                else:
-                    return True
+            if not mute_clicked and not already_muted:
+                logger.warning(
+                    "Could not find or click mute button for %s, participant may join unmuted",
+                    participant_name,
+                )
+            elif already_muted:
+                mute_clicked = True
 
-            except Exception as e:
+        except WebDriverException as e:
+            logger.warning(
+                f"WebDriver error trying to mute {participant_name}: {str(e)}"
+            )
+
+        # Step 2: Click the Join button - try multiple approaches
+        join_success = False
+        try:
+            # Wait a bit more for the page to fully load
+            time.sleep(5)  # Increased wait time
+
+            # Check if we need to switch to an iframe
+            iframes = driver.find_elements(By.TAG_NAME, "iframe")
+            logger.info(f"Found {len(iframes)} iframes on page for {participant_name}")
+
+            if iframes:
+                for i, iframe in enumerate(iframes):
+                    try:
+                        driver.switch_to.frame(iframe)
+                        logger.info(f"Switched to iframe {i} for {participant_name}")
+
+                        # Check elements in this iframe
+                        frame_buttons = driver.find_elements(By.TAG_NAME, "button")
+                        frame_inputs = driver.find_elements(By.TAG_NAME, "input")
+                        logger.info(
+                            f"In iframe {i}: {len(frame_buttons)} "
+                            f"buttons, {len(frame_inputs)} inputs"
+                        )
+
+                        # Check for mute button in iframe if we haven't muted yet
+                        if frame_buttons and not mute_clicked:
+                            try:
+                                # Look for mute button in iframe
+                                iframe_mute_selectors = [
+                                    "//button[contains(text(), 'Mute') and"
+                                    " not(contains(text(), 'Unmute'))]",
+                                    "//button[contains(@aria-label, 'Mute') and "
+                                    "not(contains(@aria-label, 'Unmute'))]",
+                                ]
+
+                                for selector in iframe_mute_selectors:
+                                    iframe_mute_buttons = driver.find_elements(
+                                        By.XPATH, selector
+                                    )
+                                    for mute_btn in iframe_mute_buttons:
+                                        if (
+                                            mute_btn.is_enabled()
+                                            and mute_btn.is_displayed()
+                                        ):
+                                            mute_btn.click()
+                                            logger.info(
+                                                "Clicked Mute button in "
+                                                f"iframe {i} for {participant_name}"
+                                            )
+                                            mute_clicked = True
+                                            time.sleep(1)
+                                            break
+                                    if mute_clicked:
+                                        break
+                            except WebDriverException as e:
+                                logger.warning(
+                                    f"WebDriver error at iframe mute: {participant_name}: {str(e)}"
+                                )
+
+                        if frame_buttons:
+                            for j, btn in enumerate(frame_buttons[:5]):
+                                btn_text = btn.text.strip()
+                                btn_type = btn.get_attribute("type")
+                                logger.info(
+                                    f"Iframe {i} Button {j}: "
+                                    f"text='{btn_text}', type='{btn_type}'"
+                                )
+                            break  # Found buttons, stay in this iframe
+                        else:
+                            driver.switch_to.default_content()  # Switch back if no buttons
+                    except WebDriverException as e:
+                        logger.info(f"Could not switch to iframe {i}: {str(e)}")
+                        driver.switch_to.default_content()
+
+            # Debug: Let's see what buttons are actually on the page
+            all_buttons = driver.find_elements(By.TAG_NAME, "button")
+            all_inputs = driver.find_elements(By.TAG_NAME, "input")
+            all_links = driver.find_elements(By.TAG_NAME, "a")
+
+            logger.info(
+                f"Debug for {participant_name}: Found {len(all_buttons)} "
+                f"buttons, {len(all_inputs)} inputs, {len(all_links)} links"
+            )
+
+            for i, btn in enumerate(all_buttons[:10]):  # Show first 10 buttons
+                btn_text = btn.text.strip()
+                btn_type = btn.get_attribute("type")
+                btn_class = btn.get_attribute("class")
+                btn_aria = btn.get_attribute("aria-label")
+                logger.info(
+                    f"Button {i}: text='{btn_text}', type='{btn_type}', "
+                    f"class='{btn_class}', aria-label='{btn_aria}'"
+                )
+
+            # Try different selectors for the join button
+            join_selectors = [
+                "//button[contains(text(), 'Join')]",
+                "//button[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                "'abcdefghijklmnopqrstuvwxyz'), 'join')]",
+                "//input[@type='submit' and contains(@value, 'Join')]",
+                "//a[contains(text(), 'Join')]",
+                "//button[@type='submit']",
+                "//button[contains(@class, 'join')]",
+                "//*[contains(text(), 'Join') and (name()='button' or "
+                "name()='input' or name()='a')]",
+            ]
+
+            for selector in join_selectors:
+                try:
+                    join_button = WebDriverWait(driver, 3).until(
+                        EC.element_to_be_clickable((By.XPATH, selector))
+                    )
+                    join_button.click()
+                    logger.info(
+                        "Successfully clicked Join button using "
+                        f"selector '{selector}' for {participant_name}"
+                    )
+                    join_success = True
+                    time.sleep(3)  # Wait for meeting to load
+                    break
+                except TimeoutException:
+                    logger.info(
+                        f"Selector '{selector}' did not find a "
+                        f"clickable element for {participant_name}"
+                    )
+                    continue
+
+            if not join_success:
                 logger.error(
-                    f"Error clicking Join button for {participant_name}: {str(e)}"
+                    f"Could not find any clickable Join button for {participant_name}"
                 )
                 return False
+            else:
+                return True
 
-        else:
-            # We're not on the "Enter Meeting Info" page, try other strategies
-            logger.info(
-                f"Not on Enter Meeting Info page for {participant_name}, trying other join methods"
+        except WebDriverException as e:
+            logger.error(
+                f"WebDriver error clicking Join button for {participant_name}: {str(e)}"
             )
-            return try_other_join_methods(driver, participant_name, logger)
+            return False
 
-    except Exception as e:
-        logger.error(f"Error in meeting join process for {participant_name}: {str(e)}")
-        return False
+    else:
+        # We're not on the "Enter Meeting Info" page, try other strategies
+        logger.info(
+            f"Not on Enter Meeting Info page for {participant_name}, trying other join methods"
+        )
+        return try_other_join_methods(driver, participant_name, logger)
+
+    # No stray except or closing brace here; all exceptions are handled above.
 
 
 def try_other_join_methods(driver, participant_name, logger):
