@@ -16,6 +16,7 @@ import time
 
 import names
 
+
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
@@ -24,6 +25,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
+
+# Rich logging
+from rich.logging import RichHandler
 
 # Global event to signal shutdown
 shutdown_event = threading.Event()
@@ -41,9 +45,13 @@ def signal_handler(_signum, _frame):
 def setup_logging():
     """Setup logging configuration"""
     logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler("stress_test.log"), logging.StreamHandler()],
+        level="INFO",
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[
+            logging.FileHandler("stress_test.log"),
+            RichHandler(rich_tracebacks=True),
+        ],
     )
 
 
@@ -145,7 +153,9 @@ def join_meeting_as_participant(
 
             if join_successful:
                 logger.info(
-                    "Participant %s successfully joined the meeting", participant_name
+                    "[green]Participant %s successfully joined the meeting[/green]",
+                    participant_name,
+                    extra=({"markup": True}),
                 )
                 # Keep browser open for the duration of the test, but check for shutdown
                 end_time = time.time() + duration_seconds
@@ -164,13 +174,17 @@ def join_meeting_as_participant(
 
             else:
                 logger.error(
-                    "Participant %s failed to join the meeting", participant_name
+                    "[red]Participant %s failed to join the meeting[/red]",
+                    participant_name,
+                    extra=({"markup": True}),
                 )
                 time.sleep(10)  # Keep browser open briefly for debugging
 
         except TimeoutException:
             logger.error(
-                "Timeout while trying to join meeting for %s", participant_name
+                "[yellow]Timeout while trying to join meeting for %s[/yellow]",
+                participant_name,
+                extra=({"markup": True}),
             )
         except WebDriverException as e:
             logger.error(
@@ -184,6 +198,7 @@ def join_meeting_as_participant(
                 participant_name,
                 str(e),
             )
+            raise e
 
     except WebDriverException as e:
         logger.error("WebDriver error for participant %s: %s", participant_name, str(e))
@@ -191,6 +206,7 @@ def join_meeting_as_participant(
         logger.error(
             "Unexpected error for participant %s: %s", participant_name, str(e)
         )
+        raise e
     finally:
         if driver:
             # Suppress noisy connection errors from urllib3 and selenium during shutdown
@@ -212,9 +228,13 @@ def join_meeting_as_participant(
                     logger.error(
                         "Error closing browser for %s: %s", participant_name, str(e)
                     )
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
+                # OSError: e.g., browser process already dead, pipe closed
+                # RuntimeError: e.g., internal Selenium/driver state errors
                 logger.error(
-                    "Error closing browser for %s: %s", participant_name, str(e)
+                    "OS/Runtime error closing browser for %s: %s",
+                    participant_name,
+                    str(e),
                 )
 
 
@@ -717,7 +737,7 @@ def main():
     for thread in threads:
         thread.join()
 
-    logger.info("Stress test completed")
+    logger.info("[green]Stress test completed[/green]", extra={"markup": True})
 
 
 if __name__ == "__main__":
