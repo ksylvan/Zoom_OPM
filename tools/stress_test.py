@@ -54,6 +54,10 @@ def setup_logging():
         ],
     )
 
+    # Suppress webdriver_manager and WDM logs
+    logging.getLogger("WDM").setLevel(logging.WARNING)
+    logging.getLogger("webdriver_manager").setLevel(logging.WARNING)
+
 
 def create_chrome_options(user_data_dir=None):
     """Create Chrome options for automated testing"""
@@ -123,7 +127,6 @@ def join_meeting_as_participant(
         driver.set_window_size(800, 600)  # Construct join URL with participant name
         join_url = f"{meeting_url}&uname={participant_name}"
 
-        # Try to construct a direct web app URL first (this should work based on user feedback)
         direct_url = try_construct_direct_url(meeting_url, participant_name)
         if direct_url:
             logger.info("Using direct web app URL for %s", participant_name)
