@@ -156,8 +156,9 @@ def join_meeting_as_participant(
 
             if join_successful:
                 logger.info(
-                    "[green]Participant %s successfully joined the meeting[/green]",
+                    "[green]Participant %s (id: %s) successfully joined the meeting[/green]",
                     participant_name,
+                    participant_id,
                     extra=({"markup": True}),
                 )
                 # Keep browser open for the duration of the test, but check for shutdown
@@ -491,9 +492,8 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                                         ):
                                             mute_btn.click()
                                             logger.info(
-                                                "[green]Clicked Mute button in "
-                                                f"iframe {i} for {participant_name}[/green]",
-                                                extra={"markup": True},
+                                                "Clicked Mute button in "
+                                                f"iframe {i} for {participant_name}",
                                             )
                                             mute_clicked = True
                                             time.sleep(1)
@@ -560,9 +560,8 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
                     )
                     join_button.click()
                     logger.info(
-                        "[green]Successfully clicked Join button using "
-                        f"selector '{selector}' for {participant_name}[/green]",
-                        extra={"markup": True},
+                        "Successfully clicked Join button using "
+                        f"selector '{selector}' for {participant_name}"
                     )
                     join_success = True
                     time.sleep(3)  # Wait for meeting to load
@@ -693,6 +692,20 @@ def main():
         help="Launch participants in parallel (faster but more resource intensive)",
     )
     parser.add_argument(
+        "--parallel-thread-count",
+        type=int,
+        default=12,
+        help="Maximum number of threads to start simultaneously"
+        " when using --parallel (default: 12)",
+    )
+    parser.add_argument(
+        "--parallel-thread-delay",
+        type=int,
+        default=30,
+        help="Delay in seconds before starting next batch of "
+        "threads when using --parallel (default: 30)",
+    )
+    parser.add_argument(
         "--duration",
         type=int,
         default=1800,  # 30 minutes in seconds
@@ -705,6 +718,9 @@ def main():
     logger.info("Meeting URL: %s", args.meeting_url)
     logger.info("Delay between participants: %s seconds", args.delay)
     logger.info("Parallel mode: %s", args.parallel)
+    if args.parallel:
+        logger.info("Parallel thread count: %d", args.parallel_thread_count)
+        logger.info("Parallel thread delay: %d seconds", args.parallel_thread_delay)
     logger.info(
         "Duration per participant: %d seconds (%.1f minutes)",
         args.duration,
@@ -713,24 +729,48 @@ def main():
 
     threads = []
 
-    for i in range(1, args.count + 1):
-        # Use realistic names if available, otherwise fall back to TestUser format
-        participant_name = names.get_full_name()
+    if args.parallel:
+        # Launch participants in batches with controlled concurrency
+        logger.info(
+            "Launching participants in batches of %d", args.parallel_thread_count
+        )
 
-        if args.parallel:
-            # Launch participants in parallel using threads
-            thread = threading.Thread(
-                target=join_meeting_as_participant,
-                args=(args.meeting_url, participant_name, i, args.duration),
+        for batch_start in range(1, args.count + 1, args.parallel_thread_count):
+            batch_end = min(batch_start + args.parallel_thread_count, args.count + 1)
+            batch_threads = []
+
+            logger.info(
+                "Starting batch: participants %d to %d", batch_start, batch_end - 1
             )
-            threads.append(thread)
-            thread.start()
 
-            # Small delay between thread starts to avoid overwhelming the system
-            time.sleep(0.5)
-        else:
-            # Launch participants sequentially but with threading
-            # so they can all stay in meeting together
+            # Start threads in this batch
+            for i in range(batch_start, batch_end):
+                participant_name = names.get_full_name()
+
+                thread = threading.Thread(
+                    target=join_meeting_as_participant,
+                    args=(args.meeting_url, participant_name, i, args.duration),
+                )
+                threads.append(thread)
+                batch_threads.append(thread)
+                thread.start()
+
+                # Small delay between thread starts to avoid overwhelming the system
+                time.sleep(0.5)
+
+            # If this isn't the last batch, wait for the parallel thread delay
+            if batch_end <= args.count:
+                logger.info(
+                    "Batch started, waiting %d seconds before next batch...",
+                    args.parallel_thread_delay,
+                )
+                time.sleep(args.parallel_thread_delay)
+    else:
+        # Launch participants sequentially but with threading
+        # so they can all stay in meeting together
+        for i in range(1, args.count + 1):
+            participant_name = names.get_full_name()
+
             thread = threading.Thread(
                 target=join_meeting_as_participant,
                 args=(args.meeting_url, participant_name, i, args.duration),

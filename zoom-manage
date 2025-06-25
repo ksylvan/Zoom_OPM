@@ -1,24 +1,25 @@
 #!/usr/bin/osascript
-
 (*
- Copyright (c) 2023 Kayvan A. Sylvan
+@encoding ISO-8859-1 (Mac Roman)
 
- Permission is hereby granted, free of charge, to any person obtaining a copy of
- this software and associated documentation files (the "Software"), to deal in
- the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+Copyright (c) 2023 Kayvan A. Sylvan
 
- The above copyright notice and this permission notice shall be included in all
- copies or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
 
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *)
 
 -- Global properties
@@ -63,13 +64,18 @@ property zoomRosterDebug : missing value
 property renameParticipantsFile : missing value
 property renameMappings : missing value -- the mappings found in the above file
 
+-- useScrollingRoster controls whether to use the new scrolling method for participant gathering
+-- This addresses Zoom's virtual scrolling where only visible participants are in the DOM
+property useScrollingRoster : missing value
+
 -- Path to cliclick. See https://github.com/BlueM/cliclick
 property cliclick : "/opt/homebrew/bin/cliclick"
 
 property environmentDocs: Â
 	"Environment Variables:" & linefeed Â
 	& "    - ZOOM_DEBUG: Set this to any value to see rosters and filtered lists output on the console." & linefeed Â
-	& "    - ZOOM_RENAME_FILE: Path to a file of participant rename mappings. See rename/README.md file for details." & linefeed
+	& "    - ZOOM_RENAME_FILE: Path to a file of participant rename mappings. See rename/README.md file for details." & linefeed Â
+	& "    - ZOOM_USE_SCROLLING: Set to any value to use scrolling method for gathering all participants (recommended for large meetings)." & linefeed
 
 on usageMessage(section)
 	set tid to AppleScript's text item delimiters
@@ -156,6 +162,9 @@ on setupEnvVariables()
 	-- renameParticipantsFile points to a mapping file of old to new names with "->" in between them.
 	set renameParticipantsFile to do shell script "echo ${ZOOM_RENAME_FILE:-}"
 	if renameParticipantsFile is "" then set renameParticipantsFile to missing value
+	-- useScrollingRoster enables the new scrolling method for participant gathering
+	set useScrollingRoster to do shell script "echo ${ZOOM_USE_SCROLLING:-unset}"
+	set useScrollingRoster to (useScrollingRoster is not "unset") -- set to false or true
 end setupEnvVariables
 
 on filterFileContents(fileLines)
@@ -328,7 +337,71 @@ on findSubWindow(nameOfApp, subWinName)
 	return _ret
 end findSubWindow
 
+on getCurrentParticipantsWindow()
+	-- Dynamically find the current participants window (handles changing participant counts)
+	-- This function is called repeatedly and must handle stale window references
+	-- ALWAYS gets a fresh window reference to avoid stale references
+	try
+		tell application "System Events" to tell process appName
+			-- First try to find participants panel embedded in main meeting window
+			-- Use dynamic window reference, not cached
+			set allWindows to windows
+			repeat with mainWin in allWindows
+				try
+					set mainWinName to name of mainWin
+					if mainWinName = meetingWindow then
+						if exists scroll area 1 of mainWin then
+							-- Validate that we can actually access the scroll area
+							try
+								set testAccess to scroll area 1 of mainWin
+								tell scroll area 1 of mainWin
+									if exists outline 1 then
+										set testOutline to outline 1
+										return mainWin -- Participants panel is embedded in main window
+									end if
+								end tell
+							on error
+								-- Fall through to separate window search
+							end try
+						end if
+					end if
+				on error
+					-- Continue searching
+				end try
+			end repeat
+
+			-- Look for separate participants window - search dynamically each time, never cache
+			set _wins to windows -- Get fresh window list
+			repeat with w in _wins
+				try
+					set winName to name of w
+					if winName starts with "Participants" then
+						-- Validate that we can actually access this window's content
+						if exists scroll area 1 of w then
+							tell scroll area 1 of w
+								if exists outline 1 then
+									set testAccess to outline 1
+									return w -- Found accessible participants window
+								end if
+							end tell
+						end if
+					end if
+				on error
+					-- This window is not accessible, continue searching
+				end try
+			end repeat
+		end tell
+	on error errMsg
+		my logMessage("Error in getCurrentParticipantsWindow: " & errMsg, logFile)
+	end try
+
+	-- If we get here, no accessible participants window was found
+	return missing value
+end getCurrentParticipantsWindow
+
 on findParticipantsWindow()
+	-- Deprecated: This function is replaced by getCurrentParticipantsWindow()
+	-- Kept for backward compatibility but should not be used
 	tell application "System Events" to tell process appName
 		if exists scroll area 1 of window meetingWindow then
 			set participantWindow to window meetingWindow -- Participants panel.
@@ -340,11 +413,11 @@ end findParticipantsWindow
 
 on startParticipantWindow()
 	tell application "System Events" to tell process appName
-		my findParticipantsWindow()
-		if participantWindow is missing value then
+		try
+			set currentParticipantWindow to my getValidParticipantsWindow()
+		on error
 			my enableParticipantsWindow() -- participant window started
-		end if
-		my findParticipantsWindow()
+		end try
 	end tell
 end startParticipantWindow
 
@@ -499,6 +572,455 @@ on writeToRosterPart(namesList, spacesPrefix)
 	end repeat
 end writeToRosterPart
 
+on getValidParticipantsWindow()
+	-- Helper function to get a valid participants window reference
+	-- Re-fetches the window reference to handle dynamic name changes
+	-- This function ALWAYS gets a fresh window reference to avoid stale references
+
+	set maxRetries to 3
+	set retryCount to 0
+
+	repeat while retryCount < maxRetries
+		set retryCount to retryCount + 1
+
+		try
+			set windowRef to my getCurrentParticipantsWindow()
+			if windowRef is missing value then
+				error "Could not find participants window" number -1728
+			end if
+
+			-- Test accessibility by trying to access its scroll area
+			tell application "System Events" to tell process appName
+				tell windowRef
+					-- Try to access the scroll area and get a sample to verify it's working
+					set testAccess to scroll area 1
+					tell outline 1 of scroll area 1
+						set testSample to get value of static text of UI element of rows
+					end tell
+				end tell
+			end tell
+
+			-- If we get here, the window is accessible
+			return windowRef
+
+		on error errMsg number errNum
+			if retryCount < maxRetries then
+				my logMessage("Window access attempt " & retryCount & " failed: " & errMsg & " - retrying in 0.5s", logFile)
+				delay 0.5
+			else
+				my logMessage("All window access attempts failed after " & maxRetries & " retries: " & errMsg, logFile)
+				error "Participants window is not accessible after retries: " & errMsg number errNum
+			end if
+		end try
+	end repeat
+end getValidParticipantsWindow
+
+on safeWindowOperation(operationName, windowRef)
+	-- Safely execute operations on the participants window with retry logic
+	-- This function handles stale window references by refreshing them
+	set maxRetries to 2
+	set retryCount to 0
+
+	repeat while retryCount < maxRetries
+		set retryCount to retryCount + 1
+
+		try
+			-- Test if the window is still accessible by checking content access
+			tell application "System Events" to tell process appName
+				tell windowRef
+					-- Verify both scroll area and outline accessibility
+					if exists scroll area 1 then
+						tell scroll area 1
+							if exists outline 1 then
+								set testAccess to outline 1
+								-- Window is still accessible
+							else
+								error "Outline not accessible in participants window" number -1728
+							end if
+						end tell
+					else
+						error "Scroll area not accessible in participants window" number -1728
+					end if
+				end tell
+			end tell
+
+			-- If we get here, the window is still accessible
+			return windowRef
+
+		on error errMsg number errNum
+			if retryCount < maxRetries then
+				my logMessage("Window operation '" & operationName & "' failed (attempt " & retryCount & "): " & errMsg & " - refreshing window", logFile)
+				-- Get a fresh window reference
+				try
+					set windowRef to my getValidParticipantsWindow()
+				on error refreshErr
+					my logMessage("Failed to refresh window for operation '" & operationName & "': " & refreshErr, logFile)
+					error refreshErr
+				end try
+			else
+				my logMessage("Window operation '" & operationName & "' failed after " & maxRetries & " attempts: " & errMsg, logFile)
+				error "Window operation failed after retries: " & errMsg number errNum
+			end if
+		end try
+	end repeat
+
+	return windowRef
+end safeWindowOperation
+
+on verifyWindowAccess(windowRef, operationName)
+	-- Quick verification that a window reference is still valid
+	-- Returns true if accessible, false otherwise
+	try
+		tell application "System Events" to tell process appName
+			tell windowRef
+				-- Quick test - just check if scroll area exists
+				set testExists to exists scroll area 1
+				if testExists then
+					return true
+				else
+					my logMessage("Window verification failed for " & operationName & ": scroll area not found", logFile)
+					return false
+				end if
+			end tell
+		end tell
+	on error errMsg
+		my logMessage("Window verification failed for " & operationName & ": " & errMsg, logFile)
+		return false
+	end try
+end verifyWindowAccess
+
+on getAllParticipantsWithScrolling()
+	-- This function handles Zoom's virtual scrolling by collecting participants in a sliding window
+	-- Returns the same format as the original single-call method
+	set allCollectedNames to {}
+	set seenNames to {}
+	set maxIterations to 150 -- Increased further for very large meetings
+	set iteration to 0
+	set consecutiveEmptyIterations to 0
+	set maxConsecutiveEmpty to 8 -- Allow more empty iterations to handle dynamic changes
+	set consecutiveUnchangedScrolls to 0
+	set maxUnchangedScrolls to 3 -- If scroll position doesn't change 3 times, we're at bottom
+	set lastCollectedCount to 0
+	set stableCountIterations to 0
+
+	my logMessage("Using enhanced scrolling method to gather all participants", logFile)
+
+	tell application "System Events" to tell process appName
+		-- Get a valid participants window reference with error handling
+		set currentParticipantWindow to my getValidParticipantsWindow()
+
+		-- First, ensure we're focused on the participants window
+		set frontmost to true
+		click currentParticipantWindow
+		delay 0.5
+
+		-- Now focus specifically on the participants list within the window
+		tell currentParticipantWindow
+			-- TAB twice to select the participants list
+			keystroke tab
+			delay 0.3
+			keystroke tab
+			delay 0.3
+		end tell
+
+		-- Click on the outline element and scroll to top using smart detection
+		tell outline 1 of scroll area 1 of currentParticipantWindow
+			-- Click on the outline to ensure it has focus
+			click
+			delay 0.2
+		end tell
+
+		-- Enhanced scroll to top - multiple strategies to ensure we reach the absolute top
+		tell currentParticipantWindow
+			set pageUpAttempts to 0
+			set maxPageUpAttempts to 100 -- Increased limit for very large meetings
+			set previousNames to {}
+			set stableTopIterations to 0
+			set maxStableIterations to 3 -- Require multiple stable iterations to confirm we're at top
+
+			-- Scroll to top using PAGE UP method only (CMD+HOME doesn't work in Zoom)
+			repeat while pageUpAttempts < maxPageUpAttempts
+				-- Get current visible names before PAGE UP
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set currentNames to get value of static text of UI element of rows
+				end tell
+
+				-- If the names are the same as before, we haven't moved
+				if currentNames is equal to previousNames then
+					set stableTopIterations to stableTopIterations + 1
+					if pageUpAttempts > 0 and stableTopIterations >= maxStableIterations then
+						my logMessage("Confirmed at top of list after " & pageUpAttempts & " PAGE UP commands (" & stableTopIterations & " stable iterations)", logFile)
+						exit repeat
+					end if
+				else
+					set stableTopIterations to 0 -- Reset counter if content changed
+				end if
+
+				set previousNames to currentNames
+				set pageUpAttempts to pageUpAttempts + 1
+				key code 116 -- PAGE UP key
+				delay 0.15 -- Slightly faster delay for efficiency
+			end repeat
+
+			if pageUpAttempts >= maxPageUpAttempts then
+				my logMessage("Warning: Reached max PAGE UP attempts (" & maxPageUpAttempts & ") - assuming at top", logFile)
+			end if
+
+			-- Final verification: try a few more PAGE UPs to be absolutely sure
+			set finalVerificationAttempts to 0
+			repeat while finalVerificationAttempts < 5
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set beforeFinalUp to get value of static text of UI element of rows
+				end tell
+				key code 116 -- PAGE UP key
+				delay 0.1
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set afterFinalUp to get value of static text of UI element of rows
+				end tell
+				if beforeFinalUp is equal to afterFinalUp then
+					-- No change, we're definitely at the top
+					exit repeat
+				end if
+				set finalVerificationAttempts to finalVerificationAttempts + 1
+			end repeat
+
+			my logMessage("Completed enhanced scroll to top with " & (pageUpAttempts + finalVerificationAttempts) & " total PAGE UP attempts", logFile)
+		end tell
+
+		repeat while iteration < maxIterations
+			set iteration to iteration + 1
+			set newNamesFound to false
+
+			-- Refresh window reference periodically to handle dynamic changes
+			if (iteration mod 10 = 0) then -- More frequent refresh
+				try
+					set currentParticipantWindow to my safeWindowOperation("periodic_refresh_" & iteration, currentParticipantWindow)
+				on error errMsg
+					my logMessage("Periodic window refresh failed at iteration " & iteration & ": " & errMsg, logFile)
+					-- Try to get a completely fresh window reference
+					try
+						set currentParticipantWindow to my getValidParticipantsWindow()
+						my logMessage("Successfully obtained fresh window reference at iteration " & iteration, logFile)
+					on error errMsg2
+						my logMessage("Failed to get fresh window reference: " & errMsg2, logFile)
+						exit repeat -- Exit if we can't get a valid window
+					end try
+				end try
+			end if
+
+			-- Store current visible names before processing to detect scroll position changes
+			try
+				-- First verify the window is still accessible
+				set currentParticipantWindow to my safeWindowOperation("get_names_" & iteration, currentParticipantWindow)
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set currentVisibleNames to get value of static text of UI element of rows
+				end tell
+			on error errMsg
+				my logMessage("Error accessing participants list at iteration " & iteration & ": " & errMsg, logFile)
+				-- Try to get a completely fresh window reference and continue
+				try
+					set currentParticipantWindow to my getValidParticipantsWindow()
+					tell outline 1 of scroll area 1 of currentParticipantWindow
+						set currentVisibleNames to get value of static text of UI element of rows
+					end tell
+					my logMessage("Successfully recovered window access at iteration " & iteration, logFile)
+				on error errMsg2
+					my logMessage("Failed to recover window access: " & errMsg2, logFile)
+					exit repeat -- Exit if we can't access the window
+				end try
+			end try
+
+			-- Process each visible name
+			try
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					repeat with participantName in currentVisibleNames
+						set participantName to participantName as string
+						-- Skip empty entries that appear due to virtual scrolling
+						if participantName is not "" and participantName is not in seenNames then
+							set end of allCollectedNames to participantName
+							set end of seenNames to participantName
+							set newNamesFound to true
+						end if
+					end repeat
+				end tell
+			on error errMsg
+				my logMessage("Error processing participants at iteration " & iteration & ": " & errMsg, logFile)
+				-- Continue to next iteration
+			end try
+
+			-- Track consecutive empty iterations for more robust termination
+			if newNamesFound then
+				set consecutiveEmptyIterations to 0
+				set consecutiveUnchangedScrolls to 0 -- Reset scroll counter when we find new names
+				-- Log progress every 10 iterations or when significant progress is made
+				if (iteration mod 10 = 0) or ((count allCollectedNames) mod 50 = 0) then
+					my logMessage("Progress: Found new participants in iteration " & iteration & " (total: " & (count allCollectedNames) & ")", logFile)
+				end if
+			else
+				set consecutiveEmptyIterations to consecutiveEmptyIterations + 1
+				my logMessage("No new participants in iteration " & iteration & " (consecutive empty: " & consecutiveEmptyIterations & ")", logFile)
+			end if
+
+			-- Check if participant count has stabilized (important for dynamic meetings)
+			set currentCount to count allCollectedNames
+			if currentCount = lastCollectedCount then
+				set stableCountIterations to stableCountIterations + 1
+			else
+				set stableCountIterations to 0
+				set lastCollectedCount to currentCount
+			end if
+
+			-- Multiple termination conditions for robustness
+			set shouldTerminate to false
+			set terminationReason to ""
+
+			-- Condition 1: Too many consecutive empty iterations
+			if consecutiveEmptyIterations >= maxConsecutiveEmpty then
+				set shouldTerminate to true
+				set terminationReason to "Reached " & maxConsecutiveEmpty & " consecutive empty iterations"
+			end if
+
+			-- Condition 2: Scroll position hasn't changed for multiple attempts
+			if consecutiveUnchangedScrolls >= maxUnchangedScrolls then
+				set shouldTerminate to true
+				set terminationReason to "Scroll position unchanged for " & maxUnchangedScrolls & " attempts - reached bottom"
+			end if
+
+			-- Condition 3: Participant count has been stable for many iterations (meeting is stable)
+			if stableCountIterations >= 5 and consecutiveEmptyIterations >= 3 then
+				set shouldTerminate to true
+				set terminationReason to "Participant count stable for " & stableCountIterations & " iterations with " & consecutiveEmptyIterations & " empty - list complete"
+			end if
+
+			if shouldTerminate then
+				my logMessage(terminationReason & " after " & iteration & " total iterations", logFile)
+				exit repeat
+			end if
+
+			-- Store names before scrolling to detect if scroll actually moved content
+			set namesBeforeScroll to currentVisibleNames
+
+			-- Scroll down to see more participants - send PAGE DOWN to the participants window
+			try
+				-- Verify window is accessible before scrolling
+				set currentParticipantWindow to my safeWindowOperation("scroll_" & iteration, currentParticipantWindow)
+				tell currentParticipantWindow
+					key code 121 -- PAGE DOWN key
+				end tell
+				delay 0.5 -- Allow UI to update
+			on error errMsg
+				my logMessage("Error scrolling at iteration " & iteration & ": " & errMsg, logFile)
+				-- Try to refresh window reference and scroll again
+				try
+					set currentParticipantWindow to my getValidParticipantsWindow()
+					tell currentParticipantWindow
+						key code 121 -- PAGE DOWN key
+					end tell
+					delay 0.5
+					my logMessage("Successfully recovered scrolling at iteration " & iteration, logFile)
+				on error errMsg2
+					my logMessage("Failed to recover scrolling: " & errMsg2, logFile)
+					exit repeat -- Exit if we can't scroll
+				end try
+			end try
+
+			-- Check if scrolling actually changed the content
+			try
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set namesAfterScroll to get value of static text of UI element of rows
+				end tell
+			on error errMsg
+				my logMessage("Error checking scroll result at iteration " & iteration & ": " & errMsg, logFile)
+				-- Try once more with refreshed window reference
+				try
+					set currentParticipantWindow to my getValidParticipantsWindow()
+					tell outline 1 of scroll area 1 of currentParticipantWindow
+						set namesAfterScroll to get value of static text of UI element of rows
+					end tell
+				on error errMsg2
+					my logMessage("Failed to recover scroll check: " & errMsg2, logFile)
+					set namesAfterScroll to namesBeforeScroll -- Assume no change
+				end try
+			end try
+
+			-- Enhanced scroll detection - compare both content and count
+			set scrollContentChanged to (namesBeforeScroll is not equal to namesAfterScroll)
+			set scrollCountChanged to ((count namesBeforeScroll) ­ (count namesAfterScroll))
+
+			if not scrollContentChanged and not scrollCountChanged then
+				set consecutiveUnchangedScrolls to consecutiveUnchangedScrolls + 1
+				my logMessage("Scroll position unchanged in iteration " & iteration & " (consecutive: " & consecutiveUnchangedScrolls & ") - may be at bottom", logFile)
+			else
+				set consecutiveUnchangedScrolls to 0
+				if scrollContentChanged then
+					my logMessage("Scroll content changed in iteration " & iteration, logFile)
+				end if
+				if scrollCountChanged then
+					my logMessage("Scroll count changed from " & (count namesBeforeScroll) & " to " & (count namesAfterScroll) & " in iteration " & iteration, logFile)
+				end if
+			end if
+
+		end repeat
+
+		if iteration >= maxIterations then
+			my logMessage("Warning: Reached maximum iterations (" & maxIterations & ") while gathering participants", logFile)
+		end if
+	end tell
+
+	my logMessage("Enhanced scrolling collection completed: " & (count allCollectedNames) & " total participants collected after " & iteration & " iterations", logFile)
+
+	-- Final validation: take a quick snapshot to verify we didn't miss recent joiners
+	if (count allCollectedNames) > 100 then
+		my logMessage("Taking final validation snapshot for large meeting", logFile)
+		delay 2 -- Brief pause to let any UI settle
+		try
+			tell application "System Events" to tell process appName
+				set currentParticipantWindow to my getValidParticipantsWindow()
+				-- Enhanced scroll to top for final validation
+				try
+					tell currentParticipantWindow
+						-- Use multiple PAGE UPs with verification
+						set validationPageUps to 0
+						set previousValidationNames to {}
+						repeat while validationPageUps < 10
+							tell outline 1 of scroll area 1 of currentParticipantWindow
+								set currentValidationNames to get value of static text of UI element of rows
+							end tell
+							if currentValidationNames is equal to previousValidationNames and validationPageUps > 0 then
+								exit repeat -- We're at the top
+							end if
+							set previousValidationNames to currentValidationNames
+							key code 116 -- PAGE UP
+							delay 0.2
+							set validationPageUps to validationPageUps + 1
+						end repeat
+						my logMessage("Final validation used " & validationPageUps & " PAGE UP commands to reach top", logFile)
+					end tell
+					tell outline 1 of scroll area 1 of currentParticipantWindow
+						set validationSample to get value of static text of UI element of rows
+						set newInSample to 0
+						repeat with sampleName in validationSample
+							if (sampleName as string) is not in seenNames and (sampleName as string) is not "" then
+								set end of allCollectedNames to (sampleName as string)
+								set newInSample to newInSample + 1
+							end if
+						end repeat
+						if newInSample > 0 then
+							my logMessage("Validation found " & newInSample & " additional participants - meeting was dynamic during collection", logFile)
+						end if
+					end tell
+				on error errMsg
+					my logMessage("Error during final validation: " & errMsg, logFile)
+				end try
+			end tell
+		on error errMsg
+			my logMessage("Could not perform final validation: " & errMsg, logFile)
+		end try
+	end if
+
+	return allCollectedNames
+end getAllParticipantsWithScrolling
+
 on generateRoster()
 	set _joinedList to {}
 	set _waitingList to {}
@@ -506,38 +1028,79 @@ on generateRoster()
 	set _waitingPrefix to "Waiting Room "
 	set _notJoinedPrefix to "Not Joined"
 	my loadRenameMappings()
-	tell application "System Events" to tell process appName
-		tell outline 1 of scroll area 1 of participantWindow
-			set allParticipantNames to get value of static text of UI element of rows
-			set _num to (count allParticipantNames)
-			set _inWaitingList to false
-			set _inJoinedList to false
-			repeat with i from 1 to _num
-				set _pName to item i of allParticipantNames as string
-				if _pName starts with _waitingPrefix then
-					set _inWaitingList to true
+
+	-- Choose method for gathering participants based on environment variable
+	set allParticipantNames to {}
+	if useScrollingRoster then
+		my logMessage("Using scrolling method (forced by ZOOM_USE_SCROLLING)", logFile)
+		set allParticipantNames to my getAllParticipantsWithScrolling()
+	else
+		-- For very large meetings (>200 expected), automatically use scrolling method
+		tell application "System Events" to tell process appName
+			try
+				set currentParticipantWindow to my getValidParticipantsWindow()
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set allParticipantNames to get value of static text of UI element of rows
+				end tell
+			on error errMsg
+				my logMessage("Error accessing participants window in generateRoster: " & errMsg, logFile)
+				my logMessage("Falling back to scrolling method due to window access error", logFile)
+				set allParticipantNames to my getAllParticipantsWithScrolling()
+			end try
+			-- If we got fewer than expected and there are many participants, switch to scrolling
+			set visibleCount to count allParticipantNames
+			my logMessage("Initial scan found " & visibleCount & " visible participants", logFile)
+
+			-- Auto-detect if we need scrolling based on participant window indicators
+			set needsScrolling to false
+			if visibleCount > 50 then
+				set needsScrolling to true
+				my logMessage("Large meeting detected (" & visibleCount & " visible) - using scrolling method", logFile)
+			end if
+
+			-- Also check if last visible item suggests more content below
+			if visibleCount > 10 then
+				set lastItem to item -1 of allParticipantNames as string
+				if lastItem does not contain "Not Joined" and lastItem does not contain "Breakout" then
+					set needsScrolling to true
+					my logMessage("Last visible item '" & lastItem & "' suggests more content below - using scrolling method", logFile)
 				end if
-				if _pName starts with _joinedPrefix then
-					set _inWaitingList to false
-					set _inJoinedList to true
-				end if
-				if _pName starts with _notJoinedPrefix then exit repeat
-				if (i is 1) and (not _inWaitingList) and (not _inJoinedList) then
-					set _joinedList to allParticipantNames
-					exit repeat
-				end if
-				if _inWaitingList then
-					if not (_pName starts with _waitingPrefix) then
-						set _waitingList to _waitingList & {_pName}
-					end if
-				else
-					if not (_pName starts with _joinedPrefix) then
-						set _joinedList to _joinedList & {_pName}
-					end if
-				end if
-			end repeat
+			end if
+
+			if needsScrolling then
+				set allParticipantNames to my getAllParticipantsWithScrolling()
+			end if
 		end tell
-	end tell
+	end if
+
+	-- Process the participant names using the existing logic
+	set _num to (count allParticipantNames)
+	set _inWaitingList to false
+	set _inJoinedList to false
+	repeat with i from 1 to _num
+		set _pName to item i of allParticipantNames as string
+		if _pName starts with _waitingPrefix then
+			set _inWaitingList to true
+		end if
+		if _pName starts with _joinedPrefix then
+			set _inWaitingList to false
+			set _inJoinedList to true
+		end if
+		if _pName starts with _notJoinedPrefix then exit repeat
+		if (i is 1) and (not _inWaitingList) and (not _inJoinedList) then
+			set _joinedList to allParticipantNames
+			exit repeat
+		end if
+		if _inWaitingList then
+			if not (_pName starts with _waitingPrefix) then
+				set _waitingList to _waitingList & {_pName}
+			end if
+		else
+			if not (_pName starts with _joinedPrefix) then
+				set _joinedList to _joinedList & {_pName}
+			end if
+		end if
+	end repeat
 
 	set _intro to "=== " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_intro, meetingRoster)
@@ -594,28 +1157,233 @@ end joinStringList
 
 on generateFilteredRoster(filterString)
 	-- Look for filter strings in the description strings in participants window
+	-- This version handles Zoom's virtual scrolling by collecting participants in a sliding window
 	set _intro to "=== " & filterString & " " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_intro, filteredRoster)
 	set _num to 0
+	set allCollectedMatches to {}
+	set seenRowData to {}
+	set maxIterations to 150 -- Increased for large meetings
+	set iteration to 0
+	set consecutiveEmptyIterations to 0
+	set maxConsecutiveEmpty to 8 -- Allow more consecutive empty iterations before giving up
+
+	my logMessage("Using scrolling method to gather filtered participants for: " & filterString, logFile)
+
 	tell application "System Events" to tell process appName
-		tell outline 1 of scroll area 1 of participantWindow
-			set allParticipantNames to get value of static text of UI element of rows
-			set numPart to (count allParticipantNames)
-			set allRows to rows
-			repeat with i from 1 to numPart
-				set pName to item i of allParticipantNames as string
-				set aRow to item i of allRows
-				set allElem to UI elements of (item 1 of UI element of aRow)
-				set allDescriptions to description of UI elements of (item 1 of UI element of aRow)
-				set joinedDescription to my joinStringList(allDescriptions)
-				if joinedDescription contains filterString then
-					set _num to _num + 1
-					set _msgToLog to (_num as string) & ". " & pName
-					my writeToRoster(_msgToLog, filteredRoster)
-				end if
-			end repeat
+		-- Get a valid participants window reference with error handling
+		set currentParticipantWindow to my getValidParticipantsWindow()
+
+		-- First, ensure we're focused on the participants window
+		set frontmost to true
+		click currentParticipantWindow
+		delay 0.5
+
+		-- Now focus specifically on the participants list within the window
+		tell currentParticipantWindow
+			-- TAB twice to select the participants list
+			keystroke tab
+			delay 0.3
+			keystroke tab
+			delay 0.3
 		end tell
+
+		-- Click on the outline element and scroll to top using smart detection
+		tell outline 1 of scroll area 1 of currentParticipantWindow
+			-- Click on the outline to ensure it has focus
+			click
+			delay 0.2
+		end tell
+
+		-- Enhanced scroll to top - multiple strategies to ensure we reach the absolute top
+		tell currentParticipantWindow
+			set pageUpAttempts to 0
+			set maxPageUpAttempts to 100 -- Increased limit for very large meetings
+			set previousNames to {}
+			set stableTopIterations to 0
+			set maxStableIterations to 3 -- Require multiple stable iterations to confirm we're at top
+
+			-- Scroll to top using PAGE UP method only (CMD+HOME doesn't work in Zoom)
+			repeat while pageUpAttempts < maxPageUpAttempts
+				-- Get current visible names before PAGE UP
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set currentNames to get value of static text of UI element of rows
+				end tell
+
+				-- If the names are the same as before, we haven't moved
+				if currentNames is equal to previousNames then
+					set stableTopIterations to stableTopIterations + 1
+					if pageUpAttempts > 0 and stableTopIterations >= maxStableIterations then
+						my logMessage("Confirmed at top of list after " & pageUpAttempts & " PAGE UP commands for filtered search (" & stableTopIterations & " stable iterations)", logFile)
+						exit repeat
+					end if
+				else
+					set stableTopIterations to 0 -- Reset counter if content changed
+				end if
+
+				set previousNames to currentNames
+				set pageUpAttempts to pageUpAttempts + 1
+				key code 116 -- PAGE UP key
+				delay 0.15 -- Slightly faster delay for efficiency
+			end repeat
+
+			if pageUpAttempts >= maxPageUpAttempts then
+				my logMessage("Warning: Reached max PAGE UP attempts (" & maxPageUpAttempts & ") for filtered search - assuming at top", logFile)
+			end if
+
+			-- Final verification: try a few more PAGE UPs to be absolutely sure
+			set finalVerificationAttempts to 0
+			repeat while finalVerificationAttempts < 5
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set beforeFinalUp to get value of static text of UI element of rows
+				end tell
+				key code 116 -- PAGE UP key
+				delay 0.1
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set afterFinalUp to get value of static text of UI element of rows
+				end tell
+				if beforeFinalUp is equal to afterFinalUp then
+					-- No change, we're definitely at the top
+					exit repeat
+				end if
+				set finalVerificationAttempts to finalVerificationAttempts + 1
+			end repeat
+
+			my logMessage("Completed enhanced scroll to top for filtered search with " & (pageUpAttempts + finalVerificationAttempts) & " total PAGE UP attempts", logFile)
+		end tell
+
+		repeat while iteration < maxIterations
+			set iteration to iteration + 1
+			set newMatchesFound to false
+
+			-- Refresh window reference periodically to handle dynamic changes
+			if (iteration mod 10 = 0) then -- More frequent refresh like in getAllParticipantsWithScrolling
+				try
+					set currentParticipantWindow to my safeWindowOperation("periodic_refresh_filtered_" & iteration, currentParticipantWindow)
+				on error errMsg
+					my logMessage("Periodic window refresh failed for filtered search at iteration " & iteration & ": " & errMsg, logFile)
+					-- Try to get a completely fresh window reference
+					try
+						set currentParticipantWindow to my getValidParticipantsWindow()
+						my logMessage("Successfully obtained fresh window reference for filtered search at iteration " & iteration, logFile)
+					on error errMsg2
+						my logMessage("Failed to get fresh window reference for filtered search: " & errMsg2, logFile)
+						exit repeat -- Exit if we can't get a valid window
+					end try
+				end try
+			end if
+
+			-- Access participant data with error handling
+			try
+				-- First verify the window is still accessible
+				set currentParticipantWindow to my safeWindowOperation("get_filtered_names_" & iteration, currentParticipantWindow)
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					set allParticipantNames to get value of static text of UI element of rows
+					set allRows to rows
+					set numPart to (count allParticipantNames)
+				end tell
+			on error errMsg
+				my logMessage("Error accessing participants list for filtered search at iteration " & iteration & ": " & errMsg, logFile)
+				-- Try to get a completely fresh window reference and continue
+				try
+					set currentParticipantWindow to my getValidParticipantsWindow()
+					tell outline 1 of scroll area 1 of currentParticipantWindow
+						set allParticipantNames to get value of static text of UI element of rows
+						set allRows to rows
+						set numPart to (count allParticipantNames)
+					end tell
+					my logMessage("Successfully recovered window access for filtered search at iteration " & iteration, logFile)
+				on error errMsg2
+					my logMessage("Failed to recover window access for filtered search: " & errMsg2, logFile)
+					exit repeat -- Exit if we can't access the window
+				end try
+			end try
+
+			-- Process participants with error handling for each row
+			try
+				tell outline 1 of scroll area 1 of currentParticipantWindow
+					repeat with i from 1 to numPart
+						try
+						set pName to item i of allParticipantNames as string
+						set aRow to item i of allRows
+
+						-- Create a unique identifier for this row to avoid duplicates
+						set rowIdentifier to pName & "_" & i
+
+						-- Skip if we've already processed this row data
+						if rowIdentifier is not in seenRowData then
+							set end of seenRowData to rowIdentifier
+
+							set allElem to UI elements of (item 1 of UI element of aRow)
+							set allDescriptions to description of UI elements of (item 1 of UI element of aRow)
+							set joinedDescription to my joinStringList(allDescriptions)
+
+							if joinedDescription contains filterString then
+								set _num to _num + 1
+								set _msgToLog to (_num as string) & ". " & pName
+								my writeToRoster(_msgToLog, filteredRoster)
+								set end of allCollectedMatches to pName
+								set newMatchesFound to true
+								my logMessage("Found match: " & pName & " (" & joinedDescription & ")", logFile)
+							end if
+						end if
+					on error errMsg
+						-- Log error but continue processing other rows
+						my logMessage("Error processing filtered row " & i & ": " & errMsg, logFile)
+					end try
+				end repeat
+			end tell
+		on error errMsg
+			my logMessage("Error processing participants for filtered search: " & errMsg, logFile)
+			-- Continue to next iteration
+		end try
+
+			-- Track consecutive empty iterations for more robust termination
+			if newMatchesFound then
+				set consecutiveEmptyIterations to 0
+				my logMessage("Found new filtered matches in iteration " & iteration & " (total matches: " & _num & ")", logFile)
+			else
+				set consecutiveEmptyIterations to consecutiveEmptyIterations + 1
+				my logMessage("No new filtered matches in iteration " & iteration & " (consecutive empty: " & consecutiveEmptyIterations & ")", logFile)
+			end if
+
+			-- Only exit after multiple consecutive empty iterations
+			if consecutiveEmptyIterations >= maxConsecutiveEmpty then
+				my logMessage("Reached " & maxConsecutiveEmpty & " consecutive empty iterations for filter '" & filterString & "' after " & iteration & " total iterations", logFile)
+				exit repeat
+			end if
+
+			-- Scroll down to see more participants - send PAGE DOWN to the participants window with error handling
+			try
+				-- Verify window is accessible before scrolling
+				set currentParticipantWindow to my safeWindowOperation("scroll_filtered_" & iteration, currentParticipantWindow)
+				tell currentParticipantWindow
+					key code 121 -- PAGE DOWN key
+				end tell
+				delay 0.5 -- Allow UI to update
+			on error errMsg
+				my logMessage("Error scrolling in filtered search at iteration " & iteration & ": " & errMsg, logFile)
+				-- Try to refresh window reference and scroll again
+				try
+					set currentParticipantWindow to my getValidParticipantsWindow()
+					tell currentParticipantWindow
+						key code 121 -- PAGE DOWN key
+					end tell
+					delay 0.5
+					my logMessage("Successfully recovered scrolling in filtered search at iteration " & iteration, logFile)
+				on error errMsg2
+					my logMessage("Failed to recover scrolling in filtered search: " & errMsg2, logFile)
+					exit repeat -- Exit if we can't scroll
+				end try
+			end try
+
+		end repeat
+
+		if iteration >= maxIterations then
+			my logMessage("Warning: Reached maximum iterations (" & maxIterations & ") while gathering filtered participants", logFile)
+		end if
 	end tell
+
 	if _num > 1 then
 		set plural to "s"
 	else
@@ -624,6 +1392,8 @@ on generateFilteredRoster(filterString)
 	set _summary to "=== " & filterString & " " & (_num as string) & " participant" & plural & Â
 		" " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_summary, filteredRoster)
+
+	my logMessage("Collected " & _num & " participants matching filter '" & filterString & "' using scrolling method", logFile)
 end generateFilteredRoster
 
 on howManyWaiting(waitingRoomText)
@@ -653,40 +1423,54 @@ end clickSubElement
 
 on letPeopleIn()
 	tell application "System Events" to tell process appName
-		tell outline 1 of scroll area 1 of participantWindow
-			-- Fetch all the rows in the Participants list.
-			set participantRows to every row
-			-- Check to see if Waiting Room exists.
-			set firstRowName to (get value of static text of UI element of row 1) as string
-			if firstRowName does not start with "Waiting Room " then
-				return -- Nothing to do here
-			end if
-			set allParticipantNames to get value of static text of UI element of rows
-			set _waitingNumber to my howManyWaiting(firstRowName)
-			if _waitingNumber > 1 then
-				-- We will find and click the "Admit All" button.
-				my clickSubElement(item 1 of UI element of row 1, "Admit All")
-			else
-				-- We will click the Admit button on row 2 (the participant)
-				my clickSubElement(item 1 of UI element of row 2, "Admit")
-			end if
-			delay 1
-			-- Now, we log all the people we admitted.
-			-- First, gather the list of people.
-			set myList to {}
-			repeat with _name in allParticipantNames
-				set _name to _name as text
-				if _name starts with "Joined " then
-					exit repeat
-				else
-					if not (_name starts with "Waiting Room ") then
-						set myList to myList & {_name}
-						my logMessage("Waiting Room: Admitted " & _name, logFile)
-					end if
+		set currentParticipantWindow to my getValidParticipantsWindow()
+
+		-- Use error handling to access participant data robustly
+		try
+			tell outline 1 of scroll area 1 of currentParticipantWindow
+				-- Fetch all the rows in the Participants list.
+				set participantRows to every row
+				-- Check to see if Waiting Room exists.
+				set firstRowName to (get value of static text of UI element of row 1) as string
+				if firstRowName does not start with "Waiting Room " then
+					return -- Nothing to do here
 				end if
-			end repeat
-			my trackListBatched(myList, "/waiting_list")
-		end tell
+				set allParticipantNames to get value of static text of UI element of rows
+				set _waitingNumber to my howManyWaiting(firstRowName)
+				if _waitingNumber > 1 then
+					-- We will find and click the "Admit All" button.
+					my clickSubElement(item 1 of UI element of row 1, "Admit All")
+				else
+					-- We will click the Admit button on row 2 (the participant)
+					my clickSubElement(item 1 of UI element of row 2, "Admit")
+				end if
+				delay 1
+				-- Now, we log all the people we admitted.
+				-- First, gather the list of people.
+				set myList to {}
+				repeat with _name in allParticipantNames
+					set _name to _name as text
+					if _name starts with "Joined " then
+						exit repeat
+					else
+						if not (_name starts with "Waiting Room ") then
+							set myList to myList & {_name}
+							my logMessage("Waiting Room: Admitted " & _name, logFile)
+						end if
+					end if
+				end repeat
+				my trackListBatched(myList, "/waiting_list")
+			end tell
+		on error errMsg
+			my logMessage("Error in letPeopleIn function: " & errMsg, logFile)
+			-- Try to get a fresh window reference and retry
+			try
+				set currentParticipantWindow to my getValidParticipantsWindow()
+				my logMessage("Successfully refreshed window reference in letPeopleIn", logFile)
+			on error errMsg2
+				my logMessage("Failed to refresh window reference in letPeopleIn: " & errMsg2, logFile)
+			end try
+		end try
 	end tell
 end letPeopleIn
 
@@ -828,7 +1612,8 @@ on useParticipantMenu(cmd, oldName, newName, verbose)
 	set _canRenameOthers to false
 	set _renamingMe to false
 	tell application "System Events" to tell process appName
-		tell outline 1 of scroll area 1 of participantWindow
+		set currentParticipantWindow to my getValidParticipantsWindow()
+		tell outline 1 of scroll area 1 of currentParticipantWindow
 			set allParticipantNames to get value of static text of UI element of rows
 			set _myName to item 1 of allParticipantNames as string
 			set _renamingMe to (_myName is oldName)
@@ -861,7 +1646,8 @@ on useParticipantMenu(cmd, oldName, newName, verbose)
 	end if
 	tell application appName to activate
 	tell application "System Events" to tell process appName
-		tell outline 1 of scroll area 1 of participantWindow
+		set currentParticipantWindow to my getValidParticipantsWindow()
+		tell outline 1 of scroll area 1 of currentParticipantWindow
 			repeat with _r in rows
 				if (get value of static text of UI element of _r) as text is oldName then
 					set {_x, _y} to position of UI element 1 of UI element 1 of _r
