@@ -1,25 +1,27 @@
 # Breakout Menu Analysis
 
 ## Overview
+
 Analysis of breakout-related menu items from captured Zoom menu dump for version 6.4.6.
 
-**Source Data**: `docs/zoom-menu-6.4.6.txt`  
-**Analysis Date**: December 28, 2024  
+**Analysis Date**: December 28, 2024
 **Zoom Version Analyzed**: 6.4.6 (53970)
 
 ## Search Results
 
 ### Breakout-Related Strings Found
 
-#### 1. "Breakout rooms" 
-**Location**: Menu Bar 2, Item 13  
-**Exact Text**: `Breakout rooms`  
-**Context**: Direct menu item in Meeting Controls status menu  
-**Status**: Enabled (AXMenuItem)  
-**Position**: Item 13 of 23 total menu items  
+#### 1. "Breakout rooms"
+
+**Location**: Menu Bar 2, Item 13
+**Exact Text**: `Breakout rooms`
+**Context**: Direct menu item in Meeting Controls status menu
+**Status**: Enabled (AXMenuItem)
+**Position**: Item 13 of 23 total menu items
 
 **Menu Structure**:
-```
+
+```plaintext
 Menu Bar Item 1: [Status Menu]
 └── Menu Contents (23 items):
     ├── 13. Breakout rooms               [AXMenuItem] (enabled)
@@ -30,7 +32,7 @@ Menu Bar Item 1: [Status Menu]
 The following breakout-related strings were **NOT** found in the captured dump:
 
 - ❌ "Breakout Rooms" (capitalized 'R')
-- ❌ "Rooms" (standalone)  
+- ❌ "Rooms" (standalone)
 - ❌ "More ➜" (with arrow)
 - ❌ "More (...)" (with parentheses/ellipsis)
 - ❌ Any "More" menu or submenu references
@@ -38,27 +40,32 @@ The following breakout-related strings were **NOT** found in the captured dump:
 ## Key Findings
 
 ### Menu Location
+
 - **Lives directly in Menu Bar 2**: ✅ YES
 - **Inside "More" popup**: ❌ NO
 - **Menu Position**: Item 13 out of 23 total items
 - **Category**: Communication & Collaboration section
 
 ### Exact Name Analysis
+
 - **Current Text**: `Breakout rooms` (lowercase 'r' in "rooms")
 - **Capitalization**: First word capitalized, second word lowercase
 - **No alternate naming variations found**
 
 ### Menu Bar 2 Structure
+
 The breakout rooms item appears in the main Meeting Controls status menu alongside:
 
 **Adjacent Items**:
+
 - Item 12: Chat
 - Item 13: **Breakout rooms** ← Target item
-- Item 14: Closed caption  
+- Item 14: Closed caption
 - Item 15: Invite
 
 **Section Context**:
-```
+
+```plaintext
 Communication & Collaboration:
 - Chat
 - Breakout rooms
@@ -69,12 +76,14 @@ Communication & Collaboration:
 ## Conclusion
 
 ### Current State (Zoom 6.4.6)
-- Breakout functionality is accessible as "Breakout rooms" 
+
+- Breakout functionality is accessible as "Breakout rooms"
 - Located directly in the main menu bar 2 (Meeting Controls)
 - No "More" submenu or overflow menu detected
 - Consistently lowercase "rooms" in the naming
 
 ### Notable Absences
+
 - No evidence of breakout items being moved to a "More" submenu
 - No alternative naming conventions found
 - No overflow/additional menu structures detected
@@ -89,5 +98,5 @@ To complete this analysis, consider:
 4. **User Role Analysis**: Compare host vs participant menu access
 
 ---
-**Generated**: December 28, 2024  
+**Generated**: December 28, 2024
 **Data Source**: Zoom 6.4.6 (53970) macOS menu dump
