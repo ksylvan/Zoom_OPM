@@ -297,17 +297,17 @@ on findStatusMenuWithDebug(candidateSubstrings, debugFlag)
 	-- Find a status menu of Zoom that contains any of the candidate substrings
 	-- candidateSubstrings: can be a single string or list of strings to search for
 	-- debugFlag: boolean to enable debug output of discovered menu names
-	
+
 	-- Handle parameter types: if candidateSubstrings is a string, convert to list
 	if class of candidateSubstrings is string then
 		set candidateList to {candidateSubstrings}
 	else
 		set candidateList to candidateSubstrings
 	end if
-	
+
 	set _ret to missing value
 	set discoveredMenus to {}
-	
+
 	tell application "System Events" to tell process appName
 		-- First, try to find at the top level
 		set menuItems to every menu item of menu 1 of menu bar 2
@@ -325,7 +325,7 @@ on findStatusMenuWithDebug(candidateSubstrings, debugFlag)
 				if _ret is not missing value then exit repeat
 			end if
 		end repeat
-		
+
 		-- If not found at first level, recursively inspect sub-menus
 		if _ret is missing value then
 			repeat with m in menuItems
@@ -369,7 +369,7 @@ on findStatusMenuWithDebug(candidateSubstrings, debugFlag)
 			end repeat
 		end if
 	end tell
-	
+
 	-- If debug flag is enabled and lookup failed, dump discovered menu names
 	if debugFlag and _ret is missing value then
 		set debugOutput to "=== DEBUG: Menu Discovery Failed ===" & linefeed
@@ -385,15 +385,15 @@ on findStatusMenuWithDebug(candidateSubstrings, debugFlag)
 		my logMessage(debugOutput, logFile)
 		log debugOutput
 	end if
-	
+
 	return _ret
 end findStatusMenuWithDebug
 
 on clickStatusMenu(nameSubstring)
 	-- Click a menu item in status menu. Returns true if done, false otherwise.
 	-- If direct click fails, automatically open the "More" menu item, then attempt breakout lookup again.
-	-- Ensure previous behaviour for 5.17.x continues to work by guarding with `exists` checks.
-	
+	-- Ensure previous behavior for 5.17.x continues to work by guarding with `exists` checks.
+
 	tell application "System Events" to tell process appName
 		-- First attempt: try direct lookup
 		set m to my findStatusMenu(nameSubstring)
@@ -402,18 +402,18 @@ on clickStatusMenu(nameSubstring)
 			delay 1
 			return true
 		end if
-		
+
 		-- Fallback: if direct lookup failed, try looking in "More" menu
 		set moreMenuItem to missing value
 		set menuItems to {}
-		
+
 		-- Guard with exists check for 5.17.x compatibility
 		if exists menu bar 2 then
 			if exists menu 1 of menu bar 2 then
 				set menuItems to every menu item of menu 1 of menu bar 2
 			end if
 		end if
-		
+
 		-- Look for "More" menu item
 		repeat with menuItem in menuItems
 			if exists name of menuItem then
@@ -424,14 +424,14 @@ on clickStatusMenu(nameSubstring)
 				end if
 			end if
 		end repeat
-		
+
 		-- If "More" menu found, try to access it and look for the target item
 		if moreMenuItem is not missing value then
 			try
 				-- Click "More" to open submenu
 				click moreMenuItem
 				delay 0.5
-				
+
 				-- Guard with exists check for submenu
 				if exists menu 1 of moreMenuItem then
 					set subMenuItems to every menu item of menu 1 of moreMenuItem
@@ -447,11 +447,11 @@ on clickStatusMenu(nameSubstring)
 						end if
 					end repeat
 				end if
-				
+
 				-- Close the "More" menu if target not found
 				key code 53 -- ESC key
 				delay 0.2
-				
+
 			on error errMsg
 				-- If accessing "More" menu fails, close any open menus
 				key code 53 -- ESC key
@@ -459,7 +459,7 @@ on clickStatusMenu(nameSubstring)
 			end try
 		end if
 	end tell
-	
+
 	-- Return false if neither direct nor fallback approach succeeded
 	return false
 end clickStatusMenu
