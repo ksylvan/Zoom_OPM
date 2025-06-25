@@ -47,10 +47,13 @@ property filteredRoster : "filtered.txt"
 property trackerURL : "http://localhost:5000"
 property batchCount : 50 -- can be set via ZOOM_MANAGE_BATCH_SIZE environment variable
 
+-- Configurable breakout room keywords - can be overridden via ZOOM_BREAKOUT_KEYWORDS environment variable
+property breakoutKeywords : missing value -- will be set from environment or defaults
+
 -- Top level commands the script understands
-property knownCommands : {Â
-	"help", "reset", "roster", "hands", "camera_off", "admit", "server", "dashboard", Â
-	"breakout", "camera_off", "camera_on", "phone", "no_audio", "muted", "unmuted", Â
+property knownCommands : {ï¿½
+	"help", "reset", "roster", "hands", "camera_off", "admit", "server", "dashboard", ï¿½
+	"breakout", "camera_off", "camera_on", "phone", "no_audio", "muted", "unmuted", ï¿½
 	"rename", "co-host", "host"}
 
 -- zoomRosterDebug uses the ZOOM_DEBUG environment variable.
@@ -71,11 +74,12 @@ property useScrollingRoster : missing value
 -- Path to cliclick. See https://github.com/BlueM/cliclick
 property cliclick : "/opt/homebrew/bin/cliclick"
 
-property environmentDocs: Â
-	"Environment Variables:" & linefeed Â
-	& "    - ZOOM_DEBUG: Set this to any value to see rosters and filtered lists output on the console." & linefeed Â
-	& "    - ZOOM_RENAME_FILE: Path to a file of participant rename mappings. See rename/README.md file for details." & linefeed Â
+property environmentDocs: ï¿½
+	"Environment Variables:" & linefeed ï¿½
+	& "    - ZOOM_DEBUG: Set this to any value to see rosters and filtered lists output on the console." & linefeed ï¿½
+	& "    - ZOOM_RENAME_FILE: Path to a file of participant rename mappings. See rename/README.md file for details." & linefeed ï¿½
 	& "    - ZOOM_USE_SCROLLING: Set to any value to use scrolling method for gathering all participants (recommended for large meetings)." & linefeed
+	& "    - ZOOM_BREAKOUT_KEYWORDS: Comma-separated list of keywords to search for breakout functionality (default: \"Breakout,Breakout Rooms\")." & linefeed
 
 on usageMessage(section)
 	set tid to AppleScript's text item delimiters
@@ -83,32 +87,32 @@ on usageMessage(section)
 	set path_parts to every text item of ((path to me) as string)
 	set AppleScript's text item delimiters to tid
 	if section is "top" then
-		return linefeed & "Usage: " & (item -1 of path_parts) & " [command]" & linefeed Â
-			& "    help - show usage message." & linefeed & linefeed Â
-			& "    server - start/stop the backend server. Starts the server in its own terminal." & linefeed Â
-			& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed Â
-			& "    reset - reset the tracking database." & linefeed & linefeed Â
-			& "    roster (default action) - get current roster." & linefeed Â
-			& linefeed Â
-			& "    hands - get the current hands raised." & linefeed Â
-			& "    camera_off - get the list of camera off participants." & linefeed Â
-			& "    camera_on - get the list of participants who are on video." & linefeed Â
-			& "    no_audio - get the list of participants not connected to audio." & linefeed Â
-			& "    muted - get the list of participants who are muted." & linefeed Â
-			& "    unmuted - get the list of participants who are unmuted." & linefeed Â
-			& "    phone - get the list of participants dialing in by phone." & linefeed Â
-			& linefeed Â
-			& "    admit - admit everyone in the Waiting Room." & linefeed Â
-			& "    breakout - create a set of named breakout rooms." & linefeed Â
-			& linefeed Â
-			& "    rename - rename a participant." & linefeed Â
-			& "    co-host - make a participant a co-host." & linefeed Â
-			& "    host - make a participant the meeting host (NOTE: You will not be Host or Co-Host)" & linefeed Â
+		return linefeed & "Usage: " & (item -1 of path_parts) & " [command]" & linefeed ï¿½
+			& "    help - show usage message." & linefeed & linefeed ï¿½
+			& "    server - start/stop the backend server. Starts the server in its own terminal." & linefeed ï¿½
+			& "    dashboard - open the Zoom Meeting Tracker dashboard." & linefeed ï¿½
+			& "    reset - reset the tracking database." & linefeed & linefeed ï¿½
+			& "    roster (default action) - get current roster." & linefeed ï¿½
+			& linefeed ï¿½
+			& "    hands - get the current hands raised." & linefeed ï¿½
+			& "    camera_off - get the list of camera off participants." & linefeed ï¿½
+			& "    camera_on - get the list of participants who are on video." & linefeed ï¿½
+			& "    no_audio - get the list of participants not connected to audio." & linefeed ï¿½
+			& "    muted - get the list of participants who are muted." & linefeed ï¿½
+			& "    unmuted - get the list of participants who are unmuted." & linefeed ï¿½
+			& "    phone - get the list of participants dialing in by phone." & linefeed ï¿½
+			& linefeed ï¿½
+			& "    admit - admit everyone in the Waiting Room." & linefeed ï¿½
+			& "    breakout - create a set of named breakout rooms." & linefeed ï¿½
+			& linefeed ï¿½
+			& "    rename - rename a participant." & linefeed ï¿½
+			& "    co-host - make a participant a co-host." & linefeed ï¿½
+			& "    host - make a participant the meeting host (NOTE: You will not be Host or Co-Host)" & linefeed ï¿½
 			& linefeed & environmentDocs
 	else if section is "breakout" then
-		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout [create | get | help] filename" & linefeed Â
-			& "    help - print the breakout related help message." & linefeed Â
-			& "    create - Opens up the named file and creates the rooms named there." & linefeed Â
+		return linefeed & "Usage: " & (item -1 of path_parts) & " breakout [create | get | help] filename" & linefeed ï¿½
+			& "    help - print the breakout related help message." & linefeed ï¿½
+			& "    create - Opens up the named file and creates the rooms named there." & linefeed ï¿½
 			& "    get - Get the named rooms and write them into filename." & linefeed
 	else if section is "rename" then
 		return linefeed & "Usage: " & (item -1 of path_parts) & " rename 'Original Name' 'New Name'" & linefeed
@@ -165,6 +169,12 @@ on setupEnvVariables()
 	-- useScrollingRoster enables the new scrolling method for participant gathering
 	set useScrollingRoster to do shell script "echo ${ZOOM_USE_SCROLLING:-unset}"
 	set useScrollingRoster to (useScrollingRoster is not "unset") -- set to false or true
+	-- breakoutKeywords is set from ZOOM_BREAKOUT_KEYWORDS or defaults to "Breakout,Breakout Rooms"
+	set breakoutKeywords to do shell script "echo ${ZOOM_BREAKOUT_KEYWORDS:-Breakout,Breakout Rooms}"
+	-- Convert comma-separated string to AppleScript list
+	set AppleScript's text item delimiters to ","
+	set breakoutKeywords to text items of breakoutKeywords
+	set AppleScript's text item delimiters to ""
 end setupEnvVariables
 
 on filterFileContents(fileLines)
@@ -384,10 +394,141 @@ on findStatusMenuWithDebug(candidateSubstrings, debugFlag)
 		set debugOutput to debugOutput & "=== END DEBUG ===" & linefeed
 		my logMessage(debugOutput, logFile)
 		log debugOutput
+		
+		-- Write full menu dump to file for easier debugging
+		my dumpFullMenuToLog()
 	end if
 	
 	return _ret
 end findStatusMenuWithDebug
+
+on dumpFullMenuToLog()
+	-- Dump complete menu structure to logs/zoom-menu-dump-YYYYMMDD.txt for debugging
+	set currentDate to current date
+	set dateStr to (year of currentDate as string) & (my padNumber(month of currentDate as integer)) & (my padNumber(day of currentDate as integer))
+	set dumpFileName to "zoom-menu-dump-" & dateStr & ".txt"
+	set dumpFilePath to topLevelDirectory & "logs/" & dumpFileName
+	
+	try
+		set dumpFile to open for access POSIX file dumpFilePath with write permission
+		
+		set dumpContent to "=== ZOOM MENU DUMP " & (my formatDateTime(currentDate)) & " ===" & linefeed
+		set dumpContent to dumpContent & "Zoom Version: " & appVersion & linefeed
+		set dumpContent to dumpContent & "Script: " & scriptName & linefeed & linefeed
+		
+		tell application "System Events" to tell process appName
+			try
+				-- Dump main menu bar structure
+				set dumpContent to dumpContent & "=== MAIN MENU BAR STRUCTURE ===" & linefeed
+				set menuBars to every menu bar
+				repeat with mbIndex from 1 to count of menuBars
+					set mb to item mbIndex of menuBars
+					set dumpContent to dumpContent & "Menu Bar " & mbIndex & ":" & linefeed
+					
+					try
+						set menus to every menu of mb
+						repeat with menuIndex from 1 to count of menus
+							set m to item menuIndex of menus
+							if exists name of m then
+								set menuName to name of m
+								set dumpContent to dumpContent & "  Menu " & menuIndex & ": " & menuName & linefeed
+								
+								try
+									set menuItems to every menu item of m
+									repeat with itemIndex from 1 to count of menuItems
+										set mi to item itemIndex of menuItems
+										if exists name of mi then
+											set itemName to name of mi
+											set dumpContent to dumpContent & "    Item " & itemIndex & ": " & itemName & linefeed
+											
+											-- Check for sub-menus
+											try
+												if exists menu 1 of mi then
+													set subMenuItems to every menu item of menu 1 of mi
+													repeat with subIndex from 1 to count of subMenuItems
+														set smi to item subIndex of subMenuItems
+														if exists name of smi then
+															set subItemName to name of smi
+															set dumpContent to dumpContent & "      Sub-Item " & subIndex & ": " & subItemName & linefeed
+														end if
+													end repeat
+												end if
+											end try
+										end if
+									end repeat
+								end try
+							end if
+						end repeat
+					end try
+				end repeat
+				
+				-- Dump status menu (menu bar 2) in detail
+				set dumpContent to dumpContent & linefeed & "=== STATUS MENU (Menu Bar 2) DETAILED ===" & linefeed
+				try
+					set statusMenuItems to every menu item of menu 1 of menu bar 2
+					repeat with itemIndex from 1 to count of statusMenuItems
+						set mi to item itemIndex of statusMenuItems
+						if exists name of mi then
+							set itemName to name of mi
+							set dumpContent to dumpContent & "Status Item " & itemIndex & ": '" & itemName & "'" & linefeed
+							
+							-- Try to access sub-menus for items that might contain them
+							if itemName contains "More" or itemName contains "Options" or itemName contains "â€¦" then
+								try
+									click mi
+									delay 0.5
+									if exists menu 1 of mi then
+										set subMenuItems to every menu item of menu 1 of mi
+										repeat with subIndex from 1 to count of subMenuItems
+											set smi to item subIndex of subMenuItems
+											if exists name of smi then
+												set subItemName to name of smi
+												set dumpContent to dumpContent & "  Sub-Item " & subIndex & ": '" & subItemName & "'" & linefeed
+											end if
+										end repeat
+									end if
+									key code 53 -- ESC to close menu
+									delay 0.2
+								on error
+									key code 53 -- ESC to close any open menus
+									delay 0.2
+								end try
+							end if
+						end if
+					end repeat
+				end try
+				
+			on error errMsg
+				set dumpContent to dumpContent & linefeed & "ERROR DURING MENU DUMP: " & errMsg & linefeed
+			end try
+		end tell
+		
+		set dumpContent to dumpContent & linefeed & "=== END MENU DUMP ===" & linefeed
+		
+		write dumpContent to dumpFile
+		close access dumpFile
+		
+		my logMessage("Full menu dump written to: " & dumpFilePath, logFile)
+		return dumpFilePath
+		
+	on error errMsg
+		try
+			close access dumpFile
+		end try
+		my logMessage("ERROR: Failed to write menu dump: " & errMsg, logFile)
+		return missing value
+	end try
+end dumpFullMenuToLog
+
+on padNumber(num)
+	-- Helper function to pad single digit numbers with leading zero
+	if num < 10 then
+		return "0" & (num as string)
+	else
+		return num as string
+	end if
+end padNumber
+
 
 on clickStatusMenu(nameSubstring)
 	-- Click a menu item in status menu. Returns true if done, false otherwise.
@@ -1096,7 +1237,7 @@ on getAllParticipantsWithScrolling()
 
 			-- Enhanced scroll detection - compare both content and count
 			set scrollContentChanged to (namesBeforeScroll is not equal to namesAfterScroll)
-			set scrollCountChanged to ((count namesBeforeScroll) ­ (count namesAfterScroll))
+			set scrollCountChanged to ((count namesBeforeScroll) ï¿½ (count namesAfterScroll))
 
 			if not scrollContentChanged and not scrollCountChanged then
 				set consecutiveUnchangedScrolls to consecutiveUnchangedScrolls + 1
@@ -1271,7 +1412,7 @@ on generateRoster()
 	else
 		set plural to ""
 	end if
-	set _summary to "=== " & (_num as string) & " participant" & plural Â
+	set _summary to "=== " & (_num as string) & " participant" & plural ï¿½
 		& " " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_summary, meetingRoster)
 
@@ -1540,7 +1681,7 @@ on generateFilteredRoster(filterString)
 	else
 		set plural to ""
 	end if
-	set _summary to "=== " & filterString & " " & (_num as string) & " participant" & plural & Â
+	set _summary to "=== " & filterString & " " & (_num as string) & " participant" & plural & ï¿½
 		" " & (my formatDateTime(current date)) & " ==="
 	my writeToRoster(_summary, filteredRoster)
 
@@ -1653,7 +1794,7 @@ on createBreakoutRooms(breakoutFilename)
 		return "No rooms are defined in the file " & borFilePath & " - exiting."
 	end if
 
-	set bor_clicked to my clickStatusMenu("Breakout")
+	set bor_clicked to my clickStatusMenu(breakoutKeywords)
 	if not bor_clicked then
 		return "Breakout room functionality not available. Make sure breakout rooms are enabled and you are a host or co-host."
 	end if
@@ -1723,7 +1864,7 @@ on getBreakoutRooms(breakoutFilename)
 	set bFile to POSIX file (borFilePath)
 	set _file to open for access file bFile with write permission
 
-	set bor_clicked to my clickStatusMenu("Breakout")
+	set bor_clicked to my clickStatusMenu(breakoutKeywords)
 	if not bor_clicked then
 		return "Breakout room functionality not available. Make sure breakout rooms are enabled and you are a host or co-host."
 	end if

@@ -87,8 +87,19 @@ and `YYYYMMDD-hands.txt`, where `YYYYMMDD` is the current date.
 This is an AppleScript application built to run natively on macOS, making it
 compatible with most macOS versions spanning from the older releases to the latest.
 
-It has been tested on macOS Sonoma (14.5) on an Apple M2 MacBook Air running
-Zoom Version: 5.17.11 (31580) and an Apple M3 MacBook Pro, running Zoom Workplace Version: 6.0.0 (33147).
+### Tested Configurations
+
+- **macOS Sonoma (14.5)** on Apple M2 MacBook Air with **Zoom Version: 5.17.11 (31580)**
+- **macOS** on Apple M3 MacBook Pro with **Zoom Workplace Version: 6.0.0 (33147)**
+- **Zoom Version 6.4.6 (53970)** with enhanced breakout room compatibility
+
+### Zoom Version Compatibility
+
+- **Zoom 5.17.11+**: Full compatibility with all features
+- **Zoom 6.0.0+**: Full compatibility including Zoom Workplace features
+- **Zoom 6.4.6+**: Enhanced breakout room menu lookup with improved resilience
+
+**Note**: Version 1.1.0 includes significant improvements for Zoom ≥6.4.6 compatibility, particularly for breakout room functionality that adapts to UI changes.
 
 The backend component is a [FastAPI][fastapi] server written in Python3 that
 serves the "Zoom Meeting Tracker" frontend written with JavaScript. You can
@@ -176,6 +187,62 @@ the console (stderr).
 3 Leonard H McCoy
 === Hand raised 3 participants 10/29/2023 12:30:24 ===
 ```
+
+## Troubleshooting
+
+### Debug Mode and Menu Discovery Issues
+
+If you encounter issues with menu discovery (especially with breakout rooms), enable debug mode:
+
+```bash
+export ZOOM_DEBUG=true
+./zoom-manage breakout create rooms.txt
+```
+
+**Debug Features**:
+- Detailed menu discovery logging
+- Automatic menu structure dumps saved to `logs/zoom-menu-dump-YYYYMMDD.txt`
+- Enhanced error reporting with context
+- Menu item search results and failures
+
+### Breakout Room Compatibility
+
+For Zoom versions ≥6.4.6, you can customize breakout room keywords if the default detection fails:
+
+```bash
+# Default keywords work for most cases
+./zoom-manage breakout create rooms.txt
+
+# Override with custom keywords if needed
+ZOOM_BREAKOUT_KEYWORDS="Breakout,Breakout Rooms,Meeting Rooms" ./zoom-manage breakout create rooms.txt
+
+# Enable debug to see what keywords are being searched
+ZOOM_DEBUG=true ZOOM_BREAKOUT_KEYWORDS="Custom,Keywords" ./zoom-manage breakout create rooms.txt
+```
+
+### Menu Dump Analysis
+
+When breakout room or other menu-based functions fail, check the automatically generated menu dump:
+
+```bash
+# View the latest menu dump
+ls -la logs/zoom-menu-dump-*.txt
+cat logs/zoom-menu-dump-$(date +%Y%m%d).txt
+```
+
+The menu dump contains:
+- Complete Zoom menu bar structure
+- All discoverable menu items with indices
+- Sub-menu exploration results
+- Timestamp and Zoom version information
+
+### Environment Variables Summary
+
+- **`ZOOM_DEBUG`**: Enable detailed debug output and automatic menu dumps
+- **`ZOOM_BREAKOUT_KEYWORDS`**: Comma-separated keywords for breakout room detection (default: "Breakout,Breakout Rooms")
+- **`ZOOM_RENAME_FILE`**: Path to participant rename mappings file
+- **`ZOOM_USE_SCROLLING`**: Use scrolling method for large meetings
+- **`ZOOM_MANAGE_BATCH_SIZE`**: Batch size for participant processing
 
 #### Miscellaneous commands
 
