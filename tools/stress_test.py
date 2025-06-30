@@ -25,6 +25,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+import urllib3
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Rich logging
@@ -115,16 +116,18 @@ def create_chrome_options(user_data_dir=None):
     options.add_argument("--disable-notifications")
     options.add_argument("--disable-popup-blocking")
 
-    # Comprehensive WebRTC disabling
-    options.add_argument("--disable-webrtc")
-    options.add_argument("--disable-webrtc-encryption")
-    options.add_argument("--disable-webrtc-hw-decoding")
-    options.add_argument("--disable-webrtc-hw-encoding")
-    options.add_argument("--disable-webrtc-multiple-routes")
-    options.add_argument("--disable-webrtc-stun-origin")
-    options.add_argument("--force-webrtc-ip-handling-policy=disable_non_proxied_udp")
-    options.add_argument("--use-fake-ui-for-media-stream")
-    options.add_argument("--use-fake-device-for-media-stream")
+    # Disable GCM/push messaging
+    options.add_argument("--disable-gcm")
+    options.add_argument("--disable-background-mode")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-push-api-background-sync")
+    options.add_argument("--disable-ipc-flooding-protection")
+    options.add_argument("--disable-default-apps")
+    options.add_argument("--disable-sync")
+    options.add_argument("--disable-features=TranslateUI,BlinkGenPropertyTrees")
+    options.add_argument("--disable-component-extensions-with-background-pages")
 
     # Set permissions for microphone and camera
     prefs = {
@@ -234,6 +237,19 @@ def join_meeting_as_participant(
                 participant_name,
                 str(e),
             )
+
+        except (
+            urllib3.exceptions.MaxRetryError,
+            urllib3.exceptions.NewConnectionError,
+            urllib3.exceptions.ProtocolError,
+        ) as e:
+            if shutdown_event.is_set():
+                logger.info(
+                    "Connection error during shutdown for %s, exiting gracefully",
+                    participant_name,
+                )
+            else:
+                logger.error("Connection error for %s: %s", participant_name, str(e))
         except Exception as e:
             logger.error(
                 "Unexpected error during meeting join for %s: %s",
@@ -375,6 +391,11 @@ def handle_zoom_page_navigation(driver, participant_name, logger):
 def handle_meeting_join_and_audio(driver, participant_name, logger):
     """Handle joining the meeting and setting audio preferences (muted)"""
 
+    # Early exit if shutdown detected
+    if shutdown_event.is_set():
+        logger.info(f"Shutdown detected, skipping meeting join for {participant_name}")
+        return False
+
     # First, let's debug what page we're actually on
     current_url = driver.current_url
     page_title = driver.title
@@ -479,7 +500,11 @@ def handle_meeting_join_and_audio(driver, participant_name, logger):
             elif already_muted:
                 mute_clicked = True
 
-        except WebDriverException as e:
+        except (
+            WebDriverException,
+            urllib3.exceptions.MaxRetryError,
+            urllib3.exceptions.ProtocolError,
+        ) as e:
             logger.warning(
                 f"WebDriver error trying to mute {participant_name}: {str(e)}"
             )
@@ -822,8 +847,32 @@ def main():
 
     # Wait for all threads to complete (both parallel and sequential modes)
     logger.info("Waiting for all participants to complete...")
-    for thread in threads:
-        thread.join()
+
+    try:
+        for thread in threads:
+            # Use timeout on join() to avoid hanging on Ctrl+C
+            while thread.is_alive():
+                thread.join(timeout=1.0)  # Check every second
+                if shutdown_event.is_set():
+                    logger.info("Shutdown event detected, stopping wait for threads...")
+                    break
+            if shutdown_event.is_set():
+                break
+    except KeyboardInterrupt:
+        logger.info("KeyboardInterrupt received during thread cleanup")
+        shutdown_event.set()
+
+    # Give threads a moment to clean up gracefully
+    if shutdown_event.is_set():
+        logger.info("Giving threads 3 seconds to clean up...")
+        time.sleep(3)
+
+        # Check if any threads are still alive
+        alive_threads = [t for t in threads if t.is_alive()]
+        if alive_threads:
+            logger.warning(
+                "%d threads still running, exiting anyway...", len(alive_threads)
+            )
 
     logger.info("[green]Stress test completed[/green]", extra={"markup": True})
 
