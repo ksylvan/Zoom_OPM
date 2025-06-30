@@ -79,7 +79,7 @@ def create_chrome_options(user_data_dir=None):
     options.add_argument("--autoplay-policy=no-user-gesture-required")
 
     # Optional: Run in headless mode (comment out if you want to see browsers)
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
 
     # Disable notifications and popups
     options.add_argument("--disable-notifications")
