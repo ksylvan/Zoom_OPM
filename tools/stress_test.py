@@ -8,6 +8,7 @@ It handles joining the meeting, setting audio preferences, and cleaning up brows
 import argparse
 import logging
 import os
+import platform
 import re
 import signal
 import tempfile
@@ -31,6 +32,35 @@ from rich.logging import RichHandler
 
 # Global event to signal shutdown
 shutdown_event = threading.Event()
+
+
+def get_user_agent():
+    """Get OS-appropriate user agent string using platform.system()
+
+    Returns:
+        str: User agent string appropriate for the current operating system
+    """
+    # Updated Chrome user agents (December 2024 - Chrome 131.0.0.0)
+    user_agents = {
+        "Windows": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Darwin": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Linux": "Mozilla/5.0 (X11; Linux x86_64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    }
+
+    # Generic fallback for unknown operating systems
+    generic_ua = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    )
+
+    # Get the current operating system
+    current_os = platform.system()
+
+    # Return appropriate user agent or fallback to generic
+    return user_agents.get(current_os, generic_ua)
 
 
 def signal_handler(_signum, _frame):
@@ -85,6 +115,17 @@ def create_chrome_options(user_data_dir=None):
     options.add_argument("--disable-notifications")
     options.add_argument("--disable-popup-blocking")
 
+    # Comprehensive WebRTC disabling
+    options.add_argument("--disable-webrtc")
+    options.add_argument("--disable-webrtc-encryption")
+    options.add_argument("--disable-webrtc-hw-decoding")
+    options.add_argument("--disable-webrtc-hw-encoding")
+    options.add_argument("--disable-webrtc-multiple-routes")
+    options.add_argument("--disable-webrtc-stun-origin")
+    options.add_argument("--force-webrtc-ip-handling-policy=disable_non_proxied_udp")
+    options.add_argument("--use-fake-ui-for-media-stream")
+    options.add_argument("--use-fake-device-for-media-stream")
+
     # Set permissions for microphone and camera
     prefs = {
         "profile.default_content_setting_values.media_stream_mic": 1,
@@ -94,11 +135,8 @@ def create_chrome_options(user_data_dir=None):
     }
     options.add_experimental_option("prefs", prefs)
 
-    # Set user agent to avoid detection
-    options.add_argument(
-        "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
-        " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    )
+    # Set user agent to avoid detection - use OS-appropriate user agent
+    options.add_argument(f"--user-agent={get_user_agent()}")
 
     return options
 
@@ -159,7 +197,7 @@ def join_meeting_as_participant(
                     "[green]Participant %s (id: %s) successfully joined the meeting[/green]",
                     participant_name,
                     participant_id,
-                    extra=({"markup": True}),
+                    extra={"markup": True},
                 )
                 # Keep browser open for the duration of the test, but check for shutdown
                 end_time = time.time() + duration_seconds
@@ -180,7 +218,7 @@ def join_meeting_as_participant(
                 logger.error(
                     "[red]Participant %s failed to join the meeting[/red]",
                     participant_name,
-                    extra=({"markup": True}),
+                    extra={"markup": True},
                 )
                 time.sleep(10)  # Keep browser open briefly for debugging
 
@@ -188,7 +226,7 @@ def join_meeting_as_participant(
             logger.error(
                 "[yellow]Timeout while trying to join meeting for %s[/yellow]",
                 participant_name,
-                extra=({"markup": True}),
+                extra={"markup": True},
             )
         except WebDriverException as e:
             logger.error(

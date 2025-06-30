@@ -1,0 +1,39 @@
+Chrome User-Agent Strings (Updated December 2024)
+================================================
+
+Windows 10/11 x64:
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+
+Windows 11 x64 (specific):
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+
+macOS (Intel):
+Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+
+macOS (Apple Silicon - M1/M2/M3):
+Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+
+Linux x86_64:
+Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+
+Ubuntu Linux:
+Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+
+Android (Mobile):
+Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36
+
+Chrome OS:
+Mozilla/5.0 (X11; CrOS x86_64 15117.111.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36
+
+Notes:
+------
+- Chrome version 131.0.0.0 is the current stable version as of December 2024
+- Windows NT 10.0 is used for both Windows 10 and Windows 11
+- macOS user agents typically show "Intel Mac OS X" even on Apple Silicon Macs for compatibility
+- Linux distributions generally use the same user agent format
+- The "K" in Android user agents is a placeholder that Chrome uses for security reasons
+- Chrome OS includes the CrOS identifier and build number
+
+Version Pattern:
+Chrome versions follow the format: Major.Minor.Build.Patch (e.g., 131.0.0.0)
+Major versions are released approximately every 4 weeks.

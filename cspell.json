@@ -14,13 +14,15 @@
 		"noscroll",
 		"osascript",
 		"prefs",
+		"pytest",
 		"signum",
 		"Sonoma",
 		"unmute",
 		"unmuted",
 		"Uvicorn",
 		"venv",
-		"virtualenv"
+		"virtualenv",
+		"webrtc"
 	],
 	"ignorePaths": [
 		".venv",
